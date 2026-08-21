@@ -1,0 +1,3 @@
+1;Juan Perez;1122334455;juan@gmail.com;Trabajo
+2;Maria Gomez;1199887766;maria@gmail.com;Familia
+3;Lucas Silva;1144556677;lucas@gmail.com;Amigos
