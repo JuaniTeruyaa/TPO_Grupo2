@@ -1,13 +1,15 @@
+def pedir_entero(mensaje):
+    entrada = input(mensaje)
+    while not entrada.isdigit():
+        print("[ERROR] El valor ingresado no es un número entero positivo válido.")
+        entrada = input(mensaje)
+    return int(entrada)
+
 def validar_numero(mensaje, inicio, final):
-    while True:
-        try:
-            numero = int(input(mensaje))
-            assert inicio <= numero <= final, f"El número debe estar entre {inicio} y {final}."
-            break
-        except ValueError:
-            print("[ERROR] El valor ingresado no es un número válido. Intente nuevamente.")
-        except AssertionError as error:
-            print(f"[ERROR] {error} Intente nuevamente.")
+    numero = pedir_entero(mensaje)
+    while numero < inicio or numero > final:
+        print(f"[ERROR] El número debe estar entre {inicio} y {final}.")
+        numero = pedir_entero(mensaje)
     return numero
 
 def mostrar_menu():
@@ -15,7 +17,7 @@ def mostrar_menu():
     linea = "=" * ancho
     
     print(linea)
-    print("AGENDA DE CONTACTOS".center(ancho))
+    print(" "*8, "AGENDA DE CONTACTOS")
     print(linea)
     print("  [1] Agregar un contacto")
     print("  [2] Modificar un contacto")
