@@ -19,15 +19,23 @@ def mostrar_menu():
     print(linea)
     print(" "*8, "AGENDA DE CONTACTOS")
     print(linea)
-    print("  [1] Agregar un contacto")
-    print("  [2] Modificar un contacto")
-    print("  [3] Eliminar un contacto")
-    print("  [4] Ver todos los contactos")
-    print("  [5] Buscar contacto")
+    print("  [1] Agregar un contacto") #Tomi
+    print("  [2] Modificar un contacto") #Yo
+    print("  [3] Eliminar un contacto") #Bianca
+    print("  [4] Ver todos los contactos") #Suarez
+    print("  [5] Buscar contacto") #Carlos
     print("  [6] Salir")
     print(linea)
+    
+def crear_agenda():
+    agenda=[[1,"Juan Perez",1122334455,"juan@gmail.com","Trabajo"],
+            [2,"Maria Gomez",1199887766,"maria@gmail.com","Familia"],
+            [3,"Lucas Silva",1144556677,"lucas@gmail.com","Amigos"]]
+    
+    return agenda
 
 def main():
+    agenda=crear_agenda()
     menu = True
     while menu:
         mostrar_menu()
