@@ -32,15 +32,15 @@ def main():
         eleccion = validar_numero("Seleccione una opción (1-6): ", 1, 6)
         
         if eleccion == 1:
-            print("[Opción 1 seleccionada]")
+            print("[Opción 1 seleccionada]") # --> Append al diccionario
         elif eleccion == 2:
-            print("[Opción 2 seleccionada]")
+            print("[Opción 2 seleccionada]") # --> edit diccionario
         elif eleccion == 3:
-            print("[Opción 3 seleccionada]")
+            print("[Opción 3 seleccionada]") # --> borrar del diccionario
         elif eleccion == 4:
-            print("[Opción 4 seleccionada]")
+            print("[Opción 4 seleccionada]") # --> Mosrtar como matriz?? 
         elif eleccion == 5:
-            print("[Opción 5 seleccionada]")
+            print("[Opción 5 seleccionada]") # Busquedas
         elif eleccion == 6:
             print("¡Gracias por usar la agenda! Saliendo...")
             menu = False
