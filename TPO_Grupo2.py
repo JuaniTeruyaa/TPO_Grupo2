@@ -111,6 +111,15 @@ def modificar(agenda, pos, grupos):
     if len(informacion) > 0:
         cambiar_dato(informacion)
         
+def elimPersona(agenda):
+    data=input("Dime el nombre/id de la persona que quieres eliminar: ")
+    pos=buscar_por_nombre_o_id(dato,agenda)
+    if pos==-1:
+        print("Persona no encontrada!!")
+    else:
+        agenda.pop(pos)
+    print(agenda)
+                
 def main():
     agenda = crear_agenda()
     grupos = crear_grupos()
@@ -141,6 +150,7 @@ def main():
 
         elif eleccion == 3:
             print("[Opción 3 seleccionada]") # --> borrar del diccionario
+            elimPersona(agenda)
         elif eleccion == 4:
             print("[Opción 4 seleccionada]") # --> Mosrtar como matriz?? 
         elif eleccion == 5:
