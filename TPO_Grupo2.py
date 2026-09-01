@@ -113,12 +113,30 @@ def modificar(agenda, pos, grupos):
         
 def elimPersona(agenda):
     data=input("Dime el nombre/id de la persona que quieres eliminar: ")
-    pos=buscar_por_nombre_o_id(dato,agenda)
+    pos=buscar_por_nombre_o_id(data,agenda)
     if pos==-1:
         print("Persona no encontrada!!")
     else:
         agenda.pop(pos)
     print(agenda)
+
+def mostrarContactos(agenda, grupos):
+    filas = len(agenda)
+    
+    print("\n --- CONTACTOS -----")
+    for f in range(filas):
+        for c in range(len(agenda[f])):
+            print(f"{str(agenda[f][c]):<15}", end="")
+    
+        print()
+
+    print("\n --- GRUPOS -----")
+    for f in range(filas):
+        for c in range(len(grupos[f])):
+            print(f"{str(grupos[f][c]):<15}", end="")
+        
+        print()  
+
                 
 def main():
     agenda = crear_agenda()
@@ -152,7 +170,8 @@ def main():
             print("[Opción 3 seleccionada]") # --> borrar del diccionario
             elimPersona(agenda)
         elif eleccion == 4:
-            print("[Opción 4 seleccionada]") # --> Mosrtar como matriz?? 
+            print("[Opción 4 seleccionada]")
+            mostrarContactos(agenda,grupos)
         elif eleccion == 5:
             print("[Opción 5 seleccionada]") # Busquedas
         elif eleccion == 6:
