@@ -28,10 +28,11 @@ def mostrar_menu():
     print(linea)
     
 def crear_agenda():
-    agenda=[[1,"Juan Perez",1122334455,"juan@gmail.com","Trabajo"],
-            [2,"Maria Gomez",1199887766,"maria@gmail.com","Familia"],
-            [3,"Lucas Silva",1144556677,"lucas@gmail.com","Amigos"]]
-    
+    agenda = [
+        [1, "Juan Perez", 1122334455, "juan@gmail.com", "Trabajo"],
+        [2, "Maria Gomez", 1199887766, "maria@gmail.com", "Familia"],
+        [3, "Lucas Silva", 1144556677, "lucas@gmail.com", "Amigos"]
+    ]
     return agenda
 
 def crear_grupos():
@@ -43,7 +44,7 @@ def crear_grupos():
     ]
 
 def menu_opciones(titulo, opciones):
-    print(f"=== {titulo.upper()} ===")
+    print(f"\n=== {titulo.upper()} ===")
     for i in range(len(opciones)):
         print(f"  [{i + 1}] {opciones[i]}")
     return validar_numero(f"Seleccione una opción (1-{len(opciones)}): ", 1, len(opciones))
@@ -64,6 +65,9 @@ def seleccionar_grupo(grupos):
     opcion = menu_opciones("Seleccionar Grupo", opciones_grupos)
     return grupos[opcion - 1][1]
 
+def convertidor_texto(texto):
+    return str(texto).replace(" ", "").lower()
+
 def buscar_por_nombre_o_id(dato, agenda):
     dato_limpio = convertidor_texto(str(dato))
     for i in range(len(agenda)):
@@ -75,8 +79,81 @@ def buscar_por_nombre_o_id(dato, agenda):
             
     return -1
 
-def convertidor_texto(texto):
-    return str(texto).replace(" ", "").lower()
+def buscar_por_telefono(dato, agenda):
+    for j in range(len(agenda)):
+        if agenda[j][2] == dato:
+            return j
+    return -1
+
+def buscar_por_gmail(dato, agenda):
+    dato_limpio = convertidor_texto(str(dato))   
+    for l in range(len(agenda)):
+        if convertidor_texto(agenda[l][3]) == dato_limpio:
+            return l
+    return -1
+
+def buscar_por_grupo(dato, agenda):
+    dato_limpio = convertidor_texto(str(dato))
+    encontrados = []
+    for k in range(len(agenda)):
+        if convertidor_texto(agenda[k][4]) == dato_limpio:
+            encontrados.append(agenda[k])
+    return encontrados
+
+def mostrar_contacto(contacto):
+    print(f"ID: {contacto[0]} | Nombre: {contacto[1]} | Tel: {contacto[2]} | Mail: {contacto[3]} | Grupo: {contacto[4]}")
+
+def eleccion_de_busqueda(agenda, grupos):
+    opciones_busqueda = [
+        "Buscar por nombre o ID",
+        "Buscar por número de teléfono",
+        "Buscar por grupo",
+        "Buscar por mail",
+        "Volver al menú principal"
+    ]
+    
+    forma_de_busqueda = menu_opciones("Opciones de Búsqueda", opciones_busqueda)
+
+    if forma_de_busqueda == 1:
+        dato = input("Ingresar nombre o ID a buscar: ")
+        pos = buscar_por_nombre_o_id(dato, agenda)
+        if pos == -1:
+            print("\n[RESULTADO] Contacto no encontrado.")
+        else:
+            print("\n[RESULTADO] Contacto encontrado:")
+            mostrar_contacto(agenda[pos])
+        
+    elif forma_de_busqueda == 2:
+        dato = pedir_entero("Ingresar número de teléfono: ")
+        pos = buscar_por_telefono(dato, agenda)
+        if pos == -1:
+            print("\n[RESULTADO] Contacto no encontrado.")
+        else:
+            print("\n[RESULTADO] Contacto encontrado:")
+            mostrar_contacto(agenda[pos])
+        
+    elif forma_de_busqueda == 3:
+        dato = seleccionar_grupo(grupos)
+        encontrados = buscar_por_grupo(dato, agenda)
+        if len(encontrados) == 0:
+            print(f"\n[RESULTADO] No hay contactos registrados en el grupo '{dato}'.")
+        else:
+            print(f"\n[RESULTADO] Contactos encontrados en el grupo '{dato}' ({len(encontrados)}):")
+            for contacto in encontrados:
+                mostrar_contacto(contacto)
+        
+    elif forma_de_busqueda == 4:
+        dato = input("Ingresar mail: ")
+        pos = buscar_por_gmail(dato, agenda)
+        if pos == -1:
+            print("\n[RESULTADO] Contacto no encontrado.")
+        else:
+            print("\n[RESULTADO] Contacto encontrado:")
+            mostrar_contacto(agenda[pos])
+        
+    elif forma_de_busqueda == 5:
+        print("[INFO] Regresando al menú principal...")
+        return
 
 def cambiar_dato(informacion):
     agenda = informacion[0]
@@ -112,13 +189,13 @@ def modificar(agenda, pos, grupos):
         cambiar_dato(informacion)
         
 def elimPersona(agenda):
-    data=input("Dime el nombre/id de la persona que quieres eliminar: ")
-    pos=buscar_por_nombre_o_id(data,agenda)
-    if pos==-1:
+    data = input("Dime el nombre/id de la persona que quieres eliminar: ")
+    pos = buscar_por_nombre_o_id(data, agenda)
+    if pos == -1:
         print("Persona no encontrada!!")
     else:
         agenda.pop(pos)
-    print(agenda)
+        print("[ÉXITO] Contacto eliminado.")
 
 def mostrarContactos(agenda, grupos):
     filas = len(agenda)
@@ -127,21 +204,19 @@ def mostrarContactos(agenda, grupos):
     for f in range(filas):
         for c in range(len(agenda[f])):
             print(f"{str(agenda[f][c]):<15}", end="")
-    
         print()
 
+    filas = len(grupos)
     print("\n --- GRUPOS -----")
     for f in range(filas):
         for c in range(len(grupos[f])):
             print(f"{str(grupos[f][c]):<15}", end="")
-        
         print()  
 
-                
 def main():
     agenda = crear_agenda()
     grupos = crear_grupos()
-    ejecutando= True
+    ejecutando = True
     
     opciones_main = [
         "Agregar un contacto",
@@ -155,29 +230,27 @@ def main():
     while ejecutando:
         eleccion = menu_opciones("Agenda de Contactos", opciones_main)
         if eleccion == 1:
-            print("[Opción 1 seleccionada]") # --> Append al diccionario
+            print("[Opción 1 seleccionada]") 
         elif eleccion == 2:
             print("[Opción 2 seleccionada]")
-            dato=input("Dime el nombre de la persona que quieres modificar o su id: ")
-            pos=buscar_por_nombre_o_id(dato,agenda)
-            if pos==-1:
+            dato = input("Dime el nombre de la persona que quieres modificar o su id: ")
+            pos = buscar_por_nombre_o_id(dato, agenda)
+            if pos == -1:
                 print("Persona no encontrada!!")
             else:
                 modificar(agenda, pos, grupos)
-            print(agenda)
-
         elif eleccion == 3:
-            print("[Opción 3 seleccionada]") # --> borrar del diccionario
+            print("[Opción 3 seleccionada]")
             elimPersona(agenda)
         elif eleccion == 4:
             print("[Opción 4 seleccionada]")
-            mostrarContactos(agenda,grupos)
+            mostrarContactos(agenda, grupos)
         elif eleccion == 5:
-            print("[Opción 5 seleccionada]") # Busquedas
+            print("[Opción 5 seleccionada]")
+            eleccion_de_busqueda(agenda, grupos)
         elif eleccion == 6:
             print("¡Gracias por usar la agenda! Saliendo...")
             ejecutando = False
 
 if __name__ == "__main__":
     main()
-    
