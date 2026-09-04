@@ -1,31 +1,18 @@
 def pedir_entero(mensaje):
-    entrada = input(mensaje)
+    """Solicita al usuario una entrada y valida que sea un número entero positivo."""
+    entrada = input(mensaje).strip()
     while not entrada.isdigit():
         print("[ERROR] El valor ingresado no es un número entero positivo válido.")
-        entrada = input(mensaje)
+        entrada = input(mensaje).strip()
     return int(entrada)
 
 def validar_numero(mensaje, inicio, final):
+    """Valida que un número ingresado por teclado esté dentro de un rango determinado."""
     numero = pedir_entero(mensaje)
     while numero < inicio or numero > final:
         print(f"[ERROR] El número debe estar entre {inicio} y {final}.")
         numero = pedir_entero(mensaje)
     return numero
-
-def mostrar_menu():
-    ancho = 40
-    linea = "=" * ancho
-    
-    print(linea)
-    print(" "*8, "AGENDA DE CONTACTOS")
-    print(linea)
-    print("  [1] Agregar un contacto") #Tomi
-    print("  [2] Modificar un contacto") #Yo
-    print("  [3] Eliminar un contacto") #Bianca
-    print("  [4] Ver todos los contactos") #Suarez
-    print("  [5] Buscar contacto") #Carlos
-    print("  [6] Salir")
-    print(linea)
     
 def crear_agenda():
     agenda = [
@@ -44,6 +31,7 @@ def crear_grupos():
     ]
 
 def menu_opciones(titulo, opciones):
+    """Muestra un menú con opciones enumeradas dinámicamente y retorna la selección."""
     print(f"\n=== {titulo.upper()} ===")
     for i in range(len(opciones)):
         print(f"  [{i + 1}] {opciones[i]}")
