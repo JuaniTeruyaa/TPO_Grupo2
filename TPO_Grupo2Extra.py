@@ -36,6 +36,13 @@ def validar_solo_letras(mensaje):
         entrada = input(mensaje).strip()
     return formatear_nombre(entrada)
 
+def validar_repetido(valor, matriz, columna):
+    """Verifica si el valor ya esta en la matriz"""
+    for i in range(len(matriz)):
+        if convertidor_texto(matriz[i][columna]) == convertidor_texto(valor):
+            return True
+    return False
+
 # ==============================================================================
 # ESTRUCTURAS INICIALES Y GENERACIÓN DE DATOS
 # ==============================================================================
@@ -91,7 +98,7 @@ def seleccionar_grupo(grupos):
 # ==============================================================================
 
 def buscar_por_nombre_o_id(dato, matriz):
-    """Busca un contacto por ID o Nombre y devuelve su posición/índice en la matriz."""
+    """Busca por ID o Nombre y devuelve su posición/índice en la matriz."""
     dato_limpio = convertidor_texto(dato)
     for i in range(len(matriz)):
         id = str(matriz[i][0])
@@ -124,21 +131,11 @@ def buscar_por_grupo(dato, agenda):
     ))
     return encontrados
 
-def buscar_grupo_por_nombre_o_id(dato, grupos):
-    """Busca un grupo por ID o Nombre y devuelve su índice en la matriz."""
-    dato_limpio = convertidor_texto(dato)
-    for i in range(len(grupos)):
-        id_grupo = str(grupos[i][0])
-        nombre_grupo = convertidor_texto(grupos[i][1])
-        if dato_limpio == id_grupo or dato_limpio == nombre_grupo:
-            return i
-    return -1
 
 def buscar_grupos_por_prioridad(dato, grupos):
     """Filtra y devuelve todos los grupos que coincidan con una prioridad dada."""
-    dato_limpio = convertidor_texto(dato)
     encontrados = list(filter(
-        lambda grupo: convertidor_texto(grupo[3]) == dato_limpio, 
+        lambda grupo: grupo[3] == dato, 
         grupos
     ))
     return encontrados
@@ -151,13 +148,38 @@ def agregar_contacto(agenda, grupos):
     print("\n=== AGREGAR NUEVO CONTACTO ===")
     nuevo_id = generar_id_unico(agenda)
     nombre = validar_solo_letras("Ingrese el nombre completo: ")
+    while validar_repetido(nombre,agenda,1):
+        nombre = validar_solo_letras("No se puede repetir el nombre: ")
     telefono = pedir_entero("Ingrese el número de teléfono: ")
+    while validar_repetido(telefono,agenda,2):
+        print("[ERROR] El teléfono ya está registrado.")
+        telefono = pedir_entero("Ingrese otro número de teléfono: ")
     mail = input("Ingrese el correo electrónico: ").strip().lower()
+    while validar_repetido(mail,agenda,3):
+        print("[ERROR] El correo ya está registrado.")
+        mail = input("Ingrese otro correo electrónico: ").strip().lower()
     grupo = seleccionar_grupo(grupos)
     
     nuevo_contacto = [nuevo_id, nombre, telefono, mail, grupo]
     agenda.append(nuevo_contacto)
     print(f"\n[ÉXITO] Contacto '{nombre}' agregado con éxito (ID asignado: {nuevo_id}).")
+
+def agregar_grupo(grupos):
+    """Registra un nuevo grupo solicitando datos y asignando un ID aleatorio único."""
+    print("\n=== AGREGAR NUEVO GRUPO ===")
+    nuevo_id = generar_id_unico(grupos)
+    nombre = validar_solo_letras("Ingrese el nombre: ")
+    while validar_repetido(nombre,grupos,1):
+            nombre = validar_solo_letras("No se puede repetir el nombre: ")
+    descripcion = input("Ingrese la descripcion del grupo: ").strip()
+    opciones_prioridades = ["Alta", "Media", "Baja"]
+    eleccion_prio = menu_opciones("Prioridad", opciones_prioridades)
+    valor = opciones_prioridades[eleccion_prio - 1]
+    prioridad=valor
+    
+    nuevo_grupo = [nuevo_id, nombre, descripcion, prioridad]
+    grupos.append(nuevo_grupo)
+    print(f"\n[ÉXITO] Grupo '{nombre}' agregado con éxito (ID asignado: {nuevo_id}).")
 
 def cambiar_dato(matriz, pos, nuevo_valor, columna):
     """Aplica la modificación in situ sobre la matriz de agenda."""
@@ -175,12 +197,18 @@ def modificar(agenda, pos, grupos, categoria):
         match eleccion:
             case 1:
                 valor = validar_solo_letras("Dime el nuevo nombre: ")
+                while validar_repetido(valor,agenda,1):
+                    valor = validar_solo_letras("No se puede repetir el nombre: ")
                 cambiar_dato(agenda, pos, valor, 1)
             case 2:
                 valor = pedir_entero("Dime el nuevo teléfono: ")
+                while validar_repetido(valor,agenda,2):
+                    valor = pedir_entero("No se puede repetir el numero: ")
                 cambiar_dato(agenda, pos, valor, 2)
             case 3:
                 valor = input("Dime el nuevo mail: ").strip().lower()
+                while validar_repetido(valor,agenda,3):
+                    valor = validar_solo_letras("No se puede repetir el mail: ")
                 cambiar_dato(agenda, pos, valor, 3)
             case 4:
                 id_grupo = seleccionar_grupo(grupos)
@@ -194,7 +222,9 @@ def modificar(agenda, pos, grupos, categoria):
         
         match eleccion:
             case 1:
-                valor = input("Dime el nuevo nombre del grupo: ").strip().title()
+                valor = validar_solo_letras("Dime el nuevo nombre: ")
+                while validar_repetido(valor,grupos,1):
+                    valor = validar_solo_letras("No se puede repetir el nombre: ")
                 cambiar_dato(grupos, pos, valor, 1)
             case 2:
                 valor = input("Dime la nueva descripción del grupo: ").strip()
@@ -210,18 +240,18 @@ def modificar(agenda, pos, grupos, categoria):
                 print("[INFO] Operación cancelada.")
 
 
-def elimPersona(agenda):
+def eliminar(matriz):
     """Busca y elimina una persona de la lista usando pop."""
-    data = input("Dime el nombre/id de la persona que quieres eliminar: ").strip()
-    pos = buscar_por_nombre_o_id(data, agenda)
+    data = input("Dime el nombre/id de lo que quieres eliminar: ").strip()
+    pos = buscar_por_nombre_o_id(data, matriz)
     if pos == -1:
-        print("[RESULTADO] Persona no encontrada.")
+        print("[RESULTADO] Error al encontrarlo/a.")
     else:
-        eliminado = agenda.pop(pos)
-        print(f"[ÉXITO] Contacto '{eliminado[1]}' eliminado correctamente.")
+        eliminado = matriz.pop(pos)
+        print(f"[ÉXITO] '{eliminado[1]}' eliminado correctamente.")
 
 # ==============================================================================
-# VISUALIZACIÓN (Slices para recortar columnas anchas)
+# VISUALIZACIÓN
 # ==============================================================================
 
 def mostrar_contacto(contacto):
@@ -244,8 +274,7 @@ def mostrar_matriz_formateada(titulo, datos, cabeceras):
     
     for fila in datos:
         fila_str = [str(elem)[:20] for elem in fila]
-        if fila_str[0].isdigit():
-            fila_str[0] = fila_str[0].zfill(4)
+        fila_str[0] = fila_str[0].zfill(4)
         print(" | ".join([f"{col:<20}" for col in fila_str]))
     print("=" * len(linea_cabecera))
 
@@ -255,9 +284,8 @@ def mostrar(agenda, grupos):
     cabeceras_contacto = ["ID", "Nombre", "Teléfono", "Mail", "Grupo"]
     mostrar_matriz_formateada("Contactos (Ordenados por Nombre)", agenda_ordenada, cabeceras_contacto)
 
-    grupos_prioritarios = grupos[:2]
     cabeceras_grupo = ["ID", "Nombre Grupo", "Descripción", "Prioridad"]
-    mostrar_matriz_formateada("Grupos Prioritarios", grupos_prioritarios, cabeceras_grupo)
+    mostrar_matriz_formateada("Grupos", grupos, cabeceras_grupo)
 
 def eleccion_de_busqueda_contactos(agenda, grupos):
     """Gestor de sub-menú para realizar búsquedas por distintos parámetros mediante match-case."""
@@ -325,7 +353,7 @@ def eleccion_de_busqueda_grupos(grupos):
     match forma_de_busqueda:
         case 1:
             dato = input("Ingresar nombre o ID del grupo a buscar: ").strip()
-            pos = buscar_grupo_por_nombre_o_id(dato, grupos)
+            pos = buscar_por_nombre_o_id(dato, grupos)
             if pos == -1:
                 print("\n[RESULTADO] Grupo no encontrado.")
             else:
@@ -333,7 +361,6 @@ def eleccion_de_busqueda_grupos(grupos):
                 mostrar_grupo(grupos[pos])
             
         case 2:
-            # Usamos un menú estandarizado para elegir la prioridad de forma limpia
             prioridades = ["Alta", "Media", "Baja"]
             print("\n--- SELECCIONAR PRIORIDAD A BUSCAR ---")
             eleccion_prio = menu_opciones("Prioridad", prioridades)
@@ -363,10 +390,12 @@ def main():
         "Agregar un contacto",
         "Modificar un contacto",
         "Eliminar un contacto",
+        "Eliminar un grupo",
         "Ver todos los contactos y grupos",
         "Buscar contacto",
         "Modificar un grupo",
         "Buscar un grupo",
+        "Agregar un grupo",
         "Salir"
     ]
     
@@ -385,23 +414,28 @@ def main():
                     categoria = 0
                     modificar(agenda, pos, grupos, categoria)
             case 3:
-                elimPersona(agenda)
+                eliminar(agenda)
             case 4:
-                mostrar(agenda, grupos)
+                eliminar(grupos)
             case 5:
-                eleccion_de_busqueda_contactos(agenda, grupos)
+                mostrar(agenda, grupos)
             case 6:
-                            datoGrupo = input("Dime el nombre del grupo que quieres modificar o su id: ").strip()
-                            posGrupo = buscar_por_nombre_o_id(datoGrupo, grupos)
-                            if posGrupo == -1:
-                                print("[RESULTADO] Grupo no encontrado.")
-                            else:
-                                categoria = 1
-                                modificar(agenda, posGrupo, grupos, categoria)
-            case 7: 
+                eleccion_de_busqueda_contactos(agenda, grupos)
+            case 7:
+                datoGrupo = input("Dime el nombre del grupo que quieres modificar o su id: ").strip()
+                posGrupo = buscar_por_nombre_o_id(datoGrupo, grupos)
+                if posGrupo == -1:
+                    print("[RESULTADO] Grupo no encontrado.")
+                else:
+                    categoria = 1
+                    modificar(agenda, posGrupo, grupos, categoria)
+            case 8: 
                 eleccion_de_busqueda_grupos(grupos)
 
-            case 8:
+            case 9:
+                agregar_grupo(grupos)
+            
+            case 10:
                 print("\n¡Gracias por usar la agenda! Saliendo...")
                 ejecutando = False
             
