@@ -24,17 +24,13 @@ def convertidor_texto(texto):
     """Limpia un texto removiendo espacios en los extremos y convirtiéndolo a minúsculas."""
     return str(texto).strip().replace(" ", "").lower()
 
-def formatear_nombre(nombre):
-    """Aplica formato de nombre propio (Capitalización tipo título)."""
-    return str(nombre).strip().title()
-
 def validar_solo_letras(mensaje):
     """Pide un texto por teclado y asegura mediante isalpha que contenga solo caracteres alfabéticos."""
     entrada = input(mensaje).strip()
     while not entrada.replace(" ", "").isalpha():
         print("[ERROR] El nombre ingresado debe contener solo letras.")
         entrada = input(mensaje).strip()
-    return formatear_nombre(entrada)
+    return entrada.title()
 
 def validar_repetido(valor, matriz, columna):
     """Verifica si el valor ya esta en la matriz"""
@@ -64,9 +60,9 @@ def crear_grupos():
         [4, "Varios", "Contactos ocasionales", "Baja"]
     ]
 
-def generar_id_unico(agenda):
+def generar_id_unico(matriz):
     """Genera un nuevo ID numérico aleatorio único que no colisione con existentes."""
-    ids_existentes = [contacto[0] for contacto in agenda]
+    ids_existentes = [particular[0] for particular in matriz]
     nuevo_id = random.randint(100, 999)
     while nuevo_id in ids_existentes:
         nuevo_id = random.randint(100, 999)
@@ -230,7 +226,6 @@ def modificar(agenda, pos, grupos, categoria):
                 valor = input("Dime la nueva descripción del grupo: ").strip()
                 cambiar_dato(grupos, pos, valor, 2)
             case 3:
-                
                 prioridades = ["Alta", "Media", "Baja"]
                 print("\n--- SELECCIONAR NUEVA PRIORIDAD ---")
                 eleccion_prio = menu_opciones("Prioridad", prioridades)
@@ -266,8 +261,8 @@ def mostrar_grupo(grupo):
     
 def mostrar_matriz_formateada(titulo, datos, cabeceras):
     """Imprime cualquier matriz en formato tabla asegurando ancho uniforme con rebanadas."""
-    print(f"\n --- {titulo.upper()} ---")
     linea_cabecera = " | ".join([f"{h:^20}" for h in cabeceras])
+    print(f"\n{titulo.upper().center(len(linea_cabecera),"-")}")
     print("=" * len(linea_cabecera))
     print(linea_cabecera)
     print("=" * len(linea_cabecera))
@@ -279,10 +274,10 @@ def mostrar_matriz_formateada(titulo, datos, cabeceras):
     print("=" * len(linea_cabecera))
 
 def mostrar(agenda, grupos):
-    """Muestra las tablas ordenadas de contactos y grupos utilizando sorted y rebanadas."""
-    agenda_ordenada = sorted(agenda, key=lambda c: c[1])
+    """Muestra las tablas ordenadas de contactos y grupos utilizando."""
+    agenda_ordenada = sorted(agenda, key=lambda c: c[0])
     cabeceras_contacto = ["ID", "Nombre", "Teléfono", "Mail", "Grupo"]
-    mostrar_matriz_formateada("Contactos (Ordenados por Nombre)", agenda_ordenada, cabeceras_contacto)
+    mostrar_matriz_formateada("Contactos (Ordenados por id)", agenda_ordenada, cabeceras_contacto)
 
     cabeceras_grupo = ["ID", "Nombre Grupo", "Descripción", "Prioridad"]
     mostrar_matriz_formateada("Grupos", grupos, cabeceras_grupo)
@@ -441,5 +436,4 @@ def main():
             
 
 
-if __name__ == "__main__":
-    main()
+main()
