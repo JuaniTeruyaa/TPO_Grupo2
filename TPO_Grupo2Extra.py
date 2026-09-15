@@ -143,7 +143,7 @@ def agregar_contacto(agenda, grupos):
         print("[ERROR] El teléfono ya está registrado.")
         telefono = pedir_entero("Ingrese otro número de teléfono: ")
     mail = input("Ingrese el correo electrónico: ").strip().lower()
-    while (validar_repetido(mail,agenda,3) or mail.strip()=="" or "@" not in mail):
+    while (validar_repetido(mail,agenda,3) or "@" not in mail):
         print("[ERROR] El correo ya está registrado, es una cadena vacia o no tiene @.")
         mail = input("Ingrese otro correo electrónico: ").strip().lower()
     grupo = seleccionar_grupo(grupos)
@@ -195,7 +195,7 @@ def modificar(agenda, pos, grupos, categoria):
                 cambiar_dato(agenda, pos, valor, 2)
             case 3:
                 valor = input("Dime el nuevo mail: ").strip().lower()
-                while (validar_repetido(valor,agenda,3) or valor.strip()=="") or "@" not in valor:
+                while validar_repetido(valor,agenda,3) or "@" not in valor:
                     print("[ERROR] El correo ya está registrado, es una cadena vacia o no tiene @.")
                     valor = input("Dime el nuevo mail: ").strip().lower()
                 cambiar_dato(agenda, pos, valor, 3)
