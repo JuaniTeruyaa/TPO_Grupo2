@@ -92,7 +92,7 @@ def buscar_por_nombre_o_id(dato, matriz):
     for i in range(len(matriz)):
         id_str = str(matriz[i][0])
         nom = convertidor_texto(matriz[i][1])
-        if dato_limpio == id_str or dato_limpio.lstrip('0') == id_str or dato_limpio == nom:
+        if dato_limpio.lstrip('0') == id_str or dato_limpio == nom:
             return i
     return -1
 
@@ -254,11 +254,11 @@ def eliminar_grupo(grupos, agenda):
             print("[ERROR] No se puede eliminar el grupo por defecto 'Varios'.")
             
         else:
-            eliminado = grupos.pop(pos)
+            grupos.pop(pos)
             for contacto in agenda:
                 if convertidor_texto(contacto[4]) == convertidor_texto(nombre_grupo):
                     contacto[4] = "Varios"
-            print(f"[ÉXITO] Grupo '{eliminado[1]}' eliminado. Sus contactos pasaron a 'Varios'.")
+            print(f"[ÉXITO] Grupo '{nombre_grupo}' eliminado. Sus contactos pasaron a 'Varios'.")
 
 # VISUALIZACIÓN
 
