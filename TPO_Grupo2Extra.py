@@ -87,6 +87,7 @@ def seleccionar_grupo(grupos):
 # FUNCIONES DE BÚSQUEDA Y FILTRADO
 
 def buscar_por_nombre_o_id(dato, matriz):
+    """Recibe un id o nombre, lo convierte en texto y valida si se encuentra en la matriz"""
     dato_limpio = convertidor_texto(dato)
     for i in range(len(matriz)):
         id_str = str(matriz[i][0])
