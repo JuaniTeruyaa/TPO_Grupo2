@@ -37,6 +37,22 @@ def validar_repetido(valor, matriz, columna):
             return True
     return False
 
+def validar_formato_mail(mail):
+    """Verifica si el mail contiene la siguiente estructura: texto@texto.texto"""
+    partes = mail.split("@")
+    if len(partes) != 2:
+        return False
+    if partes[0] == "" or partes[1] == "":
+        return False
+    if "." not in partes[1]:
+        return False
+    partes_dominio = partes[1].split(".")
+    for parte in partes_dominio:
+        if parte == "":
+            return False
+
+    return True
+
 
 # ESTRUCTURAS INICIALES Y GENERACIÓN DE DATOS
 
@@ -143,7 +159,7 @@ def agregar_contacto(agenda, grupos):
         print("[ERROR] El teléfono ya está registrado.")
         telefono = pedir_entero("Ingrese otro número de teléfono: ")
     mail = input("Ingrese el correo electrónico: ").strip().lower()
-    while (validar_repetido(mail,agenda,3) or "@" not in mail):
+    while (validar_repetido(mail,agenda,3) or not validar_formato_mail(mail)):
         print("[ERROR] El correo ya está registrado, es una cadena vacia o no tiene @.")
         mail = input("Ingrese otro correo electrónico: ").strip().lower()
     grupo = seleccionar_grupo(grupos)
@@ -195,7 +211,7 @@ def modificar(agenda, pos, grupos, categoria):
                 cambiar_dato(agenda, pos, valor, 2)
             case 3:
                 valor = input("Dime el nuevo mail: ").strip().lower()
-                while validar_repetido(valor,agenda,3) or "@" not in valor:
+                while validar_repetido(valor,agenda,3) or not validar_formato_mail(valor):
                     print("[ERROR] El correo ya está registrado, es una cadena vacia o no tiene @.")
                     valor = input("Dime el nuevo mail: ").strip().lower()
                 cambiar_dato(agenda, pos, valor, 3)
