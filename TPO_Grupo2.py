@@ -24,10 +24,13 @@ def convertidor_texto(texto):
 
 def validar_solo_letras(mensaje):
     """Pide un texto por teclado y asegura mediante isalpha que contenga solo caracteres alfabéticos."""
-    entrada = input(mensaje).strip()
-    while not entrada.replace(" ", "").isalpha():
-        print("[ERROR] El nombre ingresado debe contener solo letras.")
-        entrada = input(mensaje).strip()
+    while True:
+        try:
+            entrada = input(mensaje).strip()
+            assert entrada.replace(" ", "").isalpha()
+            break
+        except AssertionError:
+            print("[ERROR] El nombre ingresado debe contener solo letras.")
     return entrada.title()
 
 def validar_formato_mail(mail):
