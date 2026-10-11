@@ -57,12 +57,10 @@ def validar_formato_mail(mail):
 # ESTRUCTURAS INICIALES Y GENERACIÓN DE DATOS
 
 def crear_agenda():
-    """Retorna la lista de diccionarios con los contactos registrados."""
     return [
-        {"id": 1, "nombre": "Juan Perez", "telefono": 123, "mail": "juan@gmail.com", "grupo": "Trabajo"},
-        {"id": 2, "nombre": "Maria Gomez", "telefono": 1199887766, "mail": "maria@gmail.com", "grupo": "Familia"},
-        {"id": 3, "nombre": "Lucas Silva", "telefono": 1144556677, "mail": "lucas@gmail.com", "grupo": "Amigos"},
-        {"id": 4, "nombre": "Juan Silva", "telefono": 123, "mail": "lucas@gmail.com", "grupo": "Amigos"}
+        {"id": 1, "nombre": "Juan Perez", "telefono": 123, "mail": "juan@gmail.com", "grupo": "Trabajo", "estado": "activo"},
+        {"id": 2, "nombre": "Maria Gomez", "telefono": 1199887766, "mail": "maria@gmail.com", "grupo": "Familia", "estado": "activo"},
+        {"id": 3, "nombre": "Lucas Silva", "telefono": 1144556677, "mail": "lucas@gmail.com", "grupo": "Amigos", "estado": "activo"}
     ]
 
 def crear_grupos():
@@ -154,6 +152,14 @@ def buscar_grupos_por_prioridad(dato, grupos):
     ))
     return encontrados
 
+def obtener_contactos_activos(agenda):
+    """Devuelve únicamente los contactos con estado activo."""
+    return [c for c in agenda if c.get("estado", "activo") == "activo"]
+
+def obtener_contactos_papelera(agenda):
+    """Devuelve únicamente los contactos que están en la papelera."""
+    return [c for c in agenda if c.get("estado") == "papelera"]
+
 # OPERACIONES ALTA, BAJA Y MODIFICACIÓN
 
 def agregar_contacto(agenda, grupos):
@@ -173,7 +179,8 @@ def agregar_contacto(agenda, grupos):
         "nombre": nombre,
         "telefono": telefono,
         "mail": mail,
-        "grupo": grupo
+        "grupo": grupo,
+        "estado": "activo"
     }
     
     agenda.append(nuevo_contacto)
@@ -250,16 +257,86 @@ def modificar_grupo(agenda, pos, grupos):
         case 4:
             print("[INFO] Operación cancelada.")
 
+def gestionar_papelera(agenda):
+    """Submenú para ver, restaurar o vaciar contactos eliminados."""
+    ejecutando = True
+    while ejecutando:
+        papelera = obtener_contactos_papelera(agenda)
+        print(f"\n=== PAPELERA DE RECICLAJE ({len(papelera)} contactos) ===")
+        print("  [1] Ver contactos en la papelera")
+        print("  [2] Restaurar un contacto")
+        print("  [3] Vaciar la papelera (Eliminar todo definitivamente)")
+        print("  [4] Eliminar un contacto de la papelera")
+        print("  [5] Volver al menú principal")
+        
+        opcion = validar_numero("Seleccione una opción: ", 1, 5)
+        
+        match opcion:
+            case 1:
+                if not papelera:
+                    print("\n[INFO] La papelera está vacía.")
+                else:
+                    for c in papelera:
+                        mostrar_contacto(c)
+            case 2:
+                if not papelera:
+                    print("\n[INFO] No hay contactos para restaurar.")
+                else:
+                    pos = buscar_por_id(agenda)
+                    if pos != -1 and agenda[pos].get("estado") == "papelera":
+                        agenda[pos]["estado"] = "activo"
+                        print(f"[ÉXITO] Contacto '{agenda[pos]['nombre']}' restaurado correctamente.")
+                    else:
+                        print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
+            case 3:
+                if not papelera:
+                    print("\n[INFO] La papelera ya está vacía.")
+                else:
+                    confirmacion = input("¿Está seguro de vaciar la papelera? Esta acción no se puede deshacer (S/N): ").strip().upper()
+                    if confirmacion == "S":
+                        for contacto in list(agenda):
+                            if contacto.get("estado") == "papelera":
+                                agenda.remove(contacto)
+                    else:
+                        print("[INFO] Operación cancelada.")
+            case 4:
+                if not papelera:
+                    print("\n[INFO] No hay contactos para restaurar.")
+                else:
+                    pos = buscar_por_id(agenda)
+                    if pos != -1 and agenda[pos].get("estado") == "papelera":
+                        eliminado = agenda.pop(pos)
+                        print(f"[ÉXITO] '{eliminado['nombre']}' fue eliminado permanentemente.")
+                    else:
+                        print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
+            case 5:
+                ejecutando = False
 
 
-def eliminar(matriz):
-    """Busca y elimina una persona de la lista usando pop."""
-    pos = buscar_por_id(matriz)
-    if pos == -1:
-        print("[RESULTADO] Error al encontrarlo/a.")
+def eliminar_contacto(agenda):
+    print("\n=== ELIMINAR CONTACTO ===")
+    pos = buscar_por_id(agenda)
+    
+    if pos == -1 or agenda[pos].get("estado") == "papelera":
+        print("[RESULTADO] Contacto no encontrado en la agenda activa.")
     else:
-        eliminado = matriz.pop(pos)
-        print(f"[ÉXITO] '{eliminado["nombre"]}' eliminado correctamente.")
+        contacto = agenda[pos]
+        print(f"\nContacto seleccionado: {contacto['nombre']} (ID: {contacto['id']})")
+        print("  [1] Mover a la papelera (recomendado)")
+        print("  [2] Eliminar permanentemente")
+        print("  [3] Cancelar")
+        
+        opcion = validar_numero("Seleccione una opción: ", 1, 3)
+        
+        match opcion:
+            case 1:
+                contacto["estado"] = "papelera"
+                print(f"[ÉXITO] '{contacto['nombre']}' fue movido a la papelera.")
+            case 2:
+                eliminado = agenda.pop(pos)
+                print(f"[ÉXITO] '{eliminado['nombre']}' fue eliminado permanentemente.")
+            case 3:
+                print("[INFO] Operación cancelada.")
 
 def eliminar_grupo(grupos, agenda):
     """Elimina un grupo y reasigna sus contactos al grupo 'Varios'."""
@@ -305,8 +382,8 @@ def mostrar_matriz_formateada(titulo, datos, cabeceras):
     print("=" * len(linea_cabecera))
 
 def mostrar(agenda, grupos):
-    """Muestra las tablas ordenadas de contactos y grupos."""
-    agenda_ordenada = sorted(agenda, key=lambda c: c["nombre"])
+    activos = obtener_contactos_activos(agenda)
+    agenda_ordenada = sorted(activos, key=lambda c: c["nombre"])
     filas_agenda = [
         [c["id"], c["nombre"], c["telefono"], c["mail"], c["grupo"]] 
         for c in agenda_ordenada
@@ -332,6 +409,7 @@ def mostrar_en_busqueda(encontrados,dato):
     
 
 def eleccion_de_busqueda_contactos(agenda, grupos):
+    activos = obtener_contactos_activos(agenda)
     """Gestor de sub-menú para realizar búsquedas por distintos parámetros mediante match-case."""
     opciones_busqueda = [
         "Buscar por ID",
@@ -437,6 +515,7 @@ def main():
         "Agregar un contacto",
         "Modificar un contacto",
         "Eliminar un contacto",
+        "Gestionar Papelera de Reciclaje", # Opción agregada
         "Eliminar un grupo",
         "Ver todos los contactos y grupos",
         "Buscar contacto",
@@ -454,34 +533,32 @@ def main():
                 agregar_contacto(agenda, grupos)
             case 2:
                 pos = buscar_por_id(agenda)
-                if pos == -1:
-                    print("[RESULTADO] Persona no encontrada.")
+                if pos == -1 or agenda[pos].get("estado") == "papelera":
+                    print("[RESULTADO] Contacto activo no encontrado.")
                 else:
                     modificar_contacto(agenda, pos, grupos)
             case 3:
-                eliminar(agenda)
+                eliminar_contacto(agenda) 
             case 4:
-                eliminar_grupo(grupos, agenda)
+                gestionar_papelera(agenda)
             case 5:
-                mostrar(agenda, grupos)
+                eliminar_grupo(grupos, agenda)
             case 6:
-                eleccion_de_busqueda_contactos(agenda, grupos)
+                mostrar(agenda, grupos)
             case 7:
+                eleccion_de_busqueda_contactos(agenda, grupos)
+            case 8: 
                 posGrupo = buscar_por_id(grupos)
                 if posGrupo == -1:
                     print("[RESULTADO] Grupo no encontrado.")
                 else:
                     modificar_grupo(agenda, posGrupo, grupos)
-            case 8: 
+            case 9: 
                 eleccion_de_busqueda_grupos(grupos)
-
-            case 9:
-                agregar_grupo(grupos)
-            
             case 10:
+                agregar_grupo(grupos)
+            case 11:
                 print("\n¡Gracias por usar la agenda! Saliendo...")
                 ejecutando = False
-            
-
 
 main()
