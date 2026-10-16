@@ -1,4 +1,4 @@
-import random
+import json
 
 # FUNCIONES AUXILIARES Y VALIDACIONES DE CADENA / ENTRADA
 
@@ -70,23 +70,36 @@ def tipar_valor(entrada):
 
 
 # ESTRUCTURAS INICIALES Y GENERACIÓN DE DATOS
+def leer_lista_json(ruta_archivo):
+    """Convertie el archivo txt en formato JSON en una lista de diccionarios"""
+    lista = []
+    try:
+        archivo = open(ruta_archivo, "rt", encoding="utf-8")
+        for linea in archivo:
+            linea_limpia = linea.strip()
+            if linea_limpia:
+                objeto = json.loads(linea_limpia)
+                lista.append(objeto)
+    except (FileNotFoundError, OSError):
+        print("[ERROR] No se ha podida leer el archivo")
+    except json.JSONDecodeError:
+        print("[ERROR] Formato JSON inválido en alguna línea")
+    finally:
+        try:
+            archivo.close()
+        except NameError:
+            pass
+    return lista
+
 
 def crear_agenda():
-    return [
-        {"id": 1, "nombre": "Juan Perez", "telefono": 123, "mail": "juan@gmail.com", "grupo": "Trabajo", "estado": "activo"},
-        {"id": 2, "nombre": "Maria Gomez", "telefono": 1199887766, "mail": "maria@gmail.com", "grupo": "Familia", "estado": "activo"},
-        {"id": 3, "nombre": "Lucas Silva", "telefono": 1144556677, "mail": "lucas@gmail.com", "grupo": "Amigos", "estado": "activo"}
-    ]
+    """Crea la lista de diccionarios agenda"""
+    return leer_lista_json("contactos.txt")        
 
 def crear_grupos():
     """Retorna la matriz con la definición de los grupos y su nivel de prioridad."""
-    return [
-        {"id":1, "nombre": "Trabajo", "descripcion": "Compañeros de la oficina y jefes", "prioridad": "Alta"},
-        {"id":2, "nombre": "Familia", "descripcion": "Parientes directos y cercanos", "prioridad": "Alta"},
-        {"id":3, "nombre": "Amigos", "descripcion": "Amigos del club y facultad", "prioridad": "Media"},
-        {"id":4, "nombre": "Varios", "descripcion": "Contactos ocasionales", "prioridad": "Baja"}
-    ]
-
+    return leer_lista_json("grupos.txt")  
+            
 def generar_id_unico(matriz):
     """Genera un nuevo ID numérico único evaluando el ID más alto existente."""
     max_id = max(fila["id"] for fila in matriz)
@@ -462,6 +475,98 @@ def eliminar_grupo(grupos, agenda):
                     contacto["grupo"] = "Varios"
             print(f"[ÉXITO] Grupo '{nombre_grupo}' eliminado. Sus contactos pasaron a 'Varios'.")
 
+def exportar_archivo(agenda, grupos):
+        opciones = ["Exportar contacto(s)/grupo(s)", "Elegir datos especificos a exportar", "Salir"]
+        eleccion = menu_opciones("Opciones", opciones)
+        contacto_o_grupo=validar_numero("Elija entre contactos(1), Grupos(2)", 1, 2)
+        match eleccion:
+            case 1:
+                if contacto_o_grupo==1:
+                    ids=elegir_ids(agenda)
+                    lista_contactos=guardar_diccionario_con_ids(agenda,ids)
+                    crear_archivo(lista_contactos,"archivo_contactos.txt")
+                else:
+                    ids=elegir_ids(grupos)
+                    lista_grupos=guardar_diccionario_con_ids(agenda,ids)
+                    crear_archivo(lista_grupos,"archivo_grupos.txt")
+            case 2:
+                if contacto_o_grupo==1:
+                    opciones=["id","nombre","telefono","mail","grupo","estado","salir"]
+                    datos_elegidos=set()
+                    dato=""
+                    while dato!="salir":
+                        dato=menu_opciones("Opciones",opciones)
+                        dato=opciones[dato-1]
+                        if dato!="salir":
+                            datos_elegidos.add(dato)
+                    list(datos_elegidos)
+                    lista_contactos=guardar_diccionario_con_datos(agenda,datos_elegidos)
+                    crear_archivo(lista_contactos,"archivo_datos_contactos.txt")
+                else:
+                    opciones=["id","nombre","descripcion","prioridad","salir"]
+                    datos_elegidos=set()
+                    dato=""
+                    while dato!="salir":
+                        dato=menu_opciones("Opciones",opciones)
+                        dato=opciones[dato-1]
+                        if dato!="salir":
+                            datos_elegidos.add(dato)
+                    list(datos_elegidos)
+                    lista_grupos=guardar_diccionario_con_datos(grupos,datos_elegidos)
+                    crear_archivo(lista_grupos,"archivo_datos_grupos.txt")
+            case 3:
+                return
+        
+def elegir_ids(matriz):
+    ids=[]
+    id_elementos=[elemento["id"] for elemento in matriz]
+    while True:
+        id_elegido=pedir_entero("Dime el id del que quieres exportar los datos, cuando quieras terminar ingresa un valor que ya ingresaste: ")
+        if id_elegido in ids:
+            break
+        elif id_elegido in id_elementos:
+            ids.append(id_elegido)
+        else:
+            print("Ese id no esta")
+    return ids
+
+def guardar_diccionario_con_ids(matriz,ids):
+    lista_diccionarios=[]
+    for elemento in matriz:
+        if elemento["id"] in ids:
+            lista_diccionarios.append(elemento)
+    return lista_diccionarios
+
+def guardar_diccionario_con_datos(lista,datos_elegidos):
+    lista_diccionarios = []
+
+    for elemento in lista:
+        nuevo_diccionario = {}
+        for clave in datos_elegidos:
+            if clave in elemento:
+                nuevo_diccionario[clave] = elemento[clave]
+        lista_diccionarios.append(nuevo_diccionario)
+    return lista_diccionarios
+        
+            
+def crear_archivo(lista,nombre_archivo):
+    try:
+        archivo = open(nombre_archivo,"wt",encoding="utf-8")
+        for elemento in lista:
+            dato=json.dumps(elemento,ensure_ascii=False)
+            archivo.write(dato + "\n")
+    except TypeError:
+        print("[ERROR] Un elemento de la lista no se puede convertir a JSON.")
+    finally:
+        if archivo is not None:
+            archivo.close()
+        
+def leer_archivo_externo():
+    nombre=input("Dime el nombre del archivo a leer sin la extension de formato (ejemplo .txt),\ndebe estar en la carpeta del programa:")
+    nombre+=".txt"
+    print(nombre)
+    return leer_lista_json(nombre)
+            
 # VISUALIZACIÓN
 
 def mostrar_contacto(contacto):
@@ -474,17 +579,34 @@ def mostrar_grupo(grupo):
     
 def mostrar_matriz_formateada(titulo, datos, cabeceras):
     """Imprime cualquier matriz en formato tabla asegurando ancho uniforme con rebanadas."""
-    linea_cabecera = " | ".join([f"{h:^20}" for h in cabeceras])
+    linea_cabecera = " | ".join([f"{h:^15}" for h in cabeceras])
     print(f"\n{titulo.upper().center(len(linea_cabecera),'-')}")
     print("=" * len(linea_cabecera))
     print(linea_cabecera)
     print("=" * len(linea_cabecera))
     
     for fila in datos:
-        fila_str = [str(elem)[:20] for elem in fila]
+        fila_str = [str(elem)[:15] for elem in fila]
         fila_str[0] = fila_str[0].zfill(4)
-        print(" | ".join([f"{col:<20}" for col in fila_str]))
+        print(" | ".join([f"{col:<15}" for col in fila_str]))
     print("=" * len(linea_cabecera))
+    
+def mostrar_matriz_distinta(datos,titulo="Datos"):
+    """Muestra una lista de diccionarios en formato tabular.
+
+    Detecta las claves del primer elemento para crear los títulos.
+    """
+    """Convierte la lista de diccionarios a matriz y llama a mostrar_matriz_formateada."""
+    if not datos:
+        print(f"[AVISO] No hay datos para mostrar en {titulo}")
+        return
+    else:
+        cabeceras = list(datos[0].keys())
+        matriz_datos = []
+        for dicc in datos:
+            fila = [dicc.get(clave, "") for clave in cabeceras]
+            matriz_datos.append(fila)
+        mostrar_matriz_formateada(titulo, matriz_datos, cabeceras)
 
 def mostrar(agenda, grupos):
     activos = obtener_contactos_activos(agenda)
@@ -627,6 +749,8 @@ def main():
         "Modificar un grupo",
         "Buscar un grupo",
         "Agregar un grupo",
+        "Exportar un archivo",
+        "Leer un archivo externo",
         "Salir"
     ]
     
@@ -663,6 +787,11 @@ def main():
             case 10:
                 agregar_grupo(grupos)
             case 11:
+                exportar_archivo(agenda, grupos)
+            case 12:
+                datos=leer_archivo_externo()
+                mostrar_matriz_distinta(datos)
+            case 13:
                 print("\n¡Gracias por usar la agenda! Saliendo...")
                 ejecutando = False
 
