@@ -53,6 +53,21 @@ def validar_formato_mail(mail):
 
     return es_valido
 
+def tipar_valor(entrada):
+    texto = entrada.strip()
+
+    try:
+        return int(texto), "int"
+    except ValueError:
+        pass
+
+    try: 
+        return float(texto), "float"
+    except ValueError:
+        pass
+
+    return texto, "str"
+
 
 # ESTRUCTURAS INICIALES Y GENERACIÓN DE DATOS
 
@@ -76,6 +91,34 @@ def generar_id_unico(matriz):
     """Genera un nuevo ID numérico único evaluando el ID más alto existente."""
     max_id = max(fila["id"] for fila in matriz)
     return max_id + 1
+
+def generar_muestra(datos, tipo):
+    """
+    Construye la línea de texto completa (base + campos extras) 
+    para representar en pantalla un contacto o un grupo.
+    """
+    id_fmt = str(datos["id"]).zfill(4)
+
+    if tipo == "contacto":
+        linea_base = f"ID: {id_fmt:<5} | Nombre: {datos['nombre']:<18} | Tel: {datos['telefono']:<12} | Mail: {datos['mail']:<20} | Grupo: {datos['grupo']:<10}"
+        campos_fijos = ["id", "nombre", "telefono", "mail", "grupo", "estado"]
+    else:
+        linea_base = f"ID: {id_fmt:<5} | Grupo: {datos['nombre']:<15} | Descripción: {datos['descripcion']:<35} | Prioridad: {datos['prioridad']:<10}"
+        campos_fijos = ["id", "nombre", "descripcion", "prioridad"]
+
+    campos_extras = {}
+    for clave, valor in datos.items():
+        if clave not in campos_fijos:
+            campos_extras[clave] = valor
+
+    if len(campos_extras) > 0:
+        detalles = []
+        for clave, valor in campos_extras.items():
+            detalles.append(f"{clave}: {valor}")
+        texto_extra = ", ".join(detalles)
+        return f"{linea_base} | {texto_extra}"
+
+    return linea_base
 
 # MENÚS DE NAVEGACIÓN Y SELECCIÓN
 
@@ -206,6 +249,62 @@ def agregar_grupo(grupos):
     grupos.append(nuevo_grupo)
     print(f"\n[ÉXITO] Grupo '{nombre}' agregado con éxito (ID asignado: {nuevo_id}).")
 
+def agregar_campo_personalizado(entidad, tipo_entidad):
+
+    print(f"\n--- AGREGAR CAMPO EXTRA AL {tipo_entidad.upper()}: {entidad['nombre']} ---")
+
+    clave = input("Ingrese el nombre del nuevo campo (ej: nota, edad, saldo): ").strip().lower()
+
+    while clave in entidad or clave == "":
+        if clave in entidad:
+            print(f"[ERROR] El campo {clave} ya existe.")
+        else:
+            print(f"[ERROR] El nombre del campo no puede estar vacio.")
+        
+        clave = input("Ingrese el nombre del nuevo campo (ej: nota, edad, saldo): ").strip().lower()
+
+    valor = input(f"Ingrese el valor del campo {clave}:  ").strip()
+    while valor == "":
+        print(f"[ERROR] El valor del campo no puede estar vacio.")
+        valor = input(f"Ingres el valor del campo {clave}:  ").strip()
+
+    valor_final, tipo_dato = tipar_valor(valor)
+    entidad[clave] = valor_final
+
+    print(f"[EXITO] Campo {clave} agregado con valor {valor_final} (Tipo: {tipo_dato})")
+
+def eliminar_campo_personalizado(entidad, tipo_entidad):
+    """
+    Permite al usuario seleccionar y eliminar un campo extra existente.
+    """
+    if tipo_entidad == "contacto":
+        campos_fijos = ["id", "nombre", "telefono", "mail", "grupo", "estado"]
+    else:
+        campos_fijos = ["id", "nombre", "descripcion", "prioridad"]
+
+    claves_extras = []
+    for clave in entidad.keys():
+        if clave not in campos_fijos:
+            claves_extras.append(clave)
+
+    if len(claves_extras) == 0:
+        print(f"\n[INFO] Este {tipo_entidad} no tiene campos extras para eliminar.")
+        return
+
+    opciones = []
+    for clave in claves_extras:
+        opciones.append(f"Eliminar '{clave}' (Valor actual: {entidad[clave]})")
+    opciones.append("Cancelar")
+
+    eleccion = menu_opciones(f"Eliminar Campo Extra de {entidad['nombre']}", opciones)
+
+    if eleccion <= len(claves_extras):
+        clave_a_borrar = claves_extras[eleccion - 1]
+        entidad.pop(clave_a_borrar)
+        print(f"[ÉXITO] El campo '{clave_a_borrar}' fue eliminado correctamente.")
+    else:
+        print("[INFO] Operación cancelada.")
+
 def cambiar_dato(matriz, pos, nuevo_valor, clave):
     """Aplica la modificación in situ sobre la matriz de agenda."""
     matriz[pos][clave] = nuevo_valor
@@ -213,7 +312,7 @@ def cambiar_dato(matriz, pos, nuevo_valor, clave):
     
 def modificar_contacto(agenda, pos, grupos):
     """Muestra las opciones de modificar contacto y ejecuta el cambio"""
-    opciones_modificar = ["Nombre", "Teléfono", "Mail", "Grupo", "Cancelar"]
+    opciones_modificar = ["Nombre", "Teléfono", "Mail", "Grupo", "Agregar Campo Extra", "Eliminar Campo Extra", "Cancelar"]
     eleccion = menu_opciones("Menú de Modificación", opciones_modificar)
     match eleccion:
         case 1:
@@ -232,16 +331,20 @@ def modificar_contacto(agenda, pos, grupos):
             id_grupo = seleccionar_grupo(grupos)
             cambiar_dato(agenda, pos, id_grupo, "grupo")
         case 5:
+            agregar_campo_personalizado(agenda[pos], "contacto")
+        case 6:
+            eliminar_campo_personalizado(agenda[pos], "contacto")
+        case 7:
             print("[INFO] Operación cancelada.")
             
 def modificar_grupo(agenda, pos, grupos):
-    opciones_modificar_grupo = ["Nombre del grupo", "Descripción", "Prioridad", "Cancelar"]
+    opciones_modificar_grupo = ["Nombre del grupo", "Descripción", "Prioridad", "Agregar campo extra", "Eliminar Campo extra", "Cancelar"]
     eleccion = menu_opciones("Menú de Modificación de Grupo", opciones_modificar_grupo)
     match eleccion:
         case 1:
             nombre_anterior = grupos[pos]["nombre"]
             valor = validar_solo_letras("Dime el nuevo nombre: ")
-            cambiar_dato(grupos, pos, valor.title(), 1)
+            cambiar_dato(grupos, pos, valor.title(), "nombre")
             for contacto in agenda:
                 if convertidor_texto(contacto["grupo"]) == convertidor_texto(nombre_anterior):
                     contacto["grupo"] = valor
@@ -255,6 +358,10 @@ def modificar_grupo(agenda, pos, grupos):
             valor = prioridades[eleccion_prio - 1]
             cambiar_dato(grupos, pos, valor, "prioridad")
         case 4:
+            agregar_campo_personalizado(grupos[pos], "grupo")
+        case 5:
+            eliminar_campo_personalizado(grupos[pos], "grupo")
+        case 6:
             print("[INFO] Operación cancelada.")
 
 def gestionar_papelera(agenda):
@@ -359,13 +466,11 @@ def eliminar_grupo(grupos, agenda):
 
 def mostrar_contacto(contacto):
     """Muestra la ficha detallada de un contacto accediendo por clave."""
-    id_fmt = str(contacto["id"]).zfill(4)
-    print(f"ID: {id_fmt:<5} | Nombre: {contacto['nombre']:<18} | Tel: {contacto['telefono']:<12} | Mail: {contacto['mail']:<20} | Grupo: {contacto['grupo']:<10}")
-    
+    print(generar_muestra(contacto, "contacto"))
+
 def mostrar_grupo(grupo):
     """Muestra la ficha detallada de un grupo accediendo por clave."""
-    id_grupo = str(grupo["id"]).zfill(4)
-    print(f"ID: {id_grupo:<5} | Grupo: {grupo['nombre']:<15} | Descripción: {grupo['descripcion']:<35} | Prioridad: {grupo['prioridad']:<10}")
+    print(generar_muestra(grupo, "grupo"))
     
 def mostrar_matriz_formateada(titulo, datos, cabeceras):
     """Imprime cualquier matriz en formato tabla asegurando ancho uniforme con rebanadas."""
