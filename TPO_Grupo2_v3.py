@@ -7,23 +7,23 @@ import os
 
 def pedir_entero(mensaje):
     """Solicita al usuario una entrada y valida que sea un número entero positivo mediante excepciones."""
-    while True:
-        try:
-            entrada = input(mensaje).strip()
-            num = int(entrada)
-            if num <= 0:
-                raise ValueError("El número debe ser mayor a 0.")
-            return num
-        except ValueError:
-            print("[ERROR] Entrada inválida. Ingrese un número entero positivo.")
+    try:
+        entrada = input(mensaje).strip()
+        num = int(entrada)
+        if num <= 0:
+            raise ValueError("El número debe ser mayor a 0.")
+        return num
+    except ValueError:
+        print("[ERROR] Entrada inválida. Ingrese un número entero positivo.")
+        return pedir_entero(mensaje)  # Llamada recursiva
 
 def validar_numero(mensaje, inicio, final):
-    """Valida que un número ingresado por teclado esté dentro de un rango determinado."""
-    while True:
-        numero = pedir_entero(mensaje)
-        if inicio <= numero <= final:
-            return numero
-        print(f"[ERROR] El número debe estar entre {inicio} y {final}.")
+    """Valida el rango recursivamente si el número está fuera de los límites."""
+    numero = pedir_entero(mensaje)
+    if inicio <= numero <= final:
+        return numero
+    print(f"[ERROR] El número debe estar entre {inicio} y {final}.")
+    return validar_numero(mensaje, inicio, final)
 
 
 def validar_solo_letras(mensaje):
