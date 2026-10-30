@@ -1,4 +1,3 @@
-{"id":1, "nombre": "Trabajo", "descripcion": "Compañeros de la oficina y jefes", "prioridad": "Alta"}
 {"id":2, "nombre": "Familia", "descripcion": "Parientes directos y cercanos", "prioridad": "Alta"}
 {"id":3, "nombre": "Amigos", "descripcion": "Amigos del club y facultad", "prioridad": "Media"}
 {"id":4, "nombre": "Varios", "descripcion": "Contactos ocasionales", "prioridad": "Baja"}

@@ -25,36 +25,38 @@ def validar_numero(mensaje, inicio, final):
             return numero
         print(f"[ERROR] El número debe estar entre {inicio} y {final}.")
 
-def convertidor_texto(texto):
-    """Limpia un texto removiendo espacios en los extremos y convirtiéndolo a minúsculas."""
-    return str(texto).strip().replace(" ", "").lower()
 
 def validar_solo_letras(mensaje):
     """Pide un texto por teclado y asegura que contenga solo caracteres alfabéticos usando excepciones."""
-    while True:
+    resultado = ""
+    valido = False
+    while not valido:
         try:
             entrada = input(mensaje).strip()
             if not entrada.replace(" ", "").isalpha() or len(entrada) == 0:
                 raise ValueError("Debe contener únicamente letras.")
-            return entrada.title()
+            resultado = entrada.title()
+            valido = True
         except ValueError as e:
             print(f"[ERROR] {e}")
+    return resultado
 
 def validar_formato_mail(mail):
     """Verifica si el mail contiene la estructura válida: texto@texto.texto"""
+    es_valido = True
     partes = mail.split("@")
-    if len(partes) != 2:
-        return False
-    if partes[0] == "" or partes[1] == "":
-        return False
-    if "." not in partes[1]:
-        return False
-        
-    partes_dominio = partes[1].split(".")
-    for parte in partes_dominio:
-        if parte == "":
-            return False
-    return True
+
+    if len(partes) != 2 or partes[0] == "" or partes[1] == "":
+        es_valido = False
+    elif "." not in partes[1]:
+        es_valido = False
+    else:
+        partes_dominio = partes[1].split(".")
+        for parte in partes_dominio:
+            if parte == "":
+                es_valido = False
+
+    return es_valido
 
 def tipar_valor(entrada):
     """Tipa automáticamente una entrada a int, float o str usando excepciones."""
@@ -104,13 +106,6 @@ def generar_muestra(datos, tipo_registro):
 
     return linea_base
 
-def mostrar_contacto(contacto):
-    """Muestra la ficha de un contacto."""
-    print(generar_muestra(contacto, "contacto"))
-
-def mostrar_grupo(grupo):
-    """Muestra la ficha de un grupo."""
-    print(generar_muestra(grupo, "grupo"))
 
 # ==========================================
 # MANEJO DE ARCHIVOS SECUENCIAL
@@ -220,7 +215,7 @@ def buscar_por_id_archivo(id_buscado, ruta_archivo):
 def consultar_por_filtro(clave_filtro, valor_buscado, tipo_busqueda, ruta_archivo):
     """Recorre el archivo línea por línea buscando coincidencias."""
     cantidad = 0
-    valor_limpio = convertidor_texto(valor_buscado)
+    valor_limpio = str(valor_buscado).strip().replace(" ", "").lower()
 
     try:
         arch = open(ruta_archivo, "rt", encoding="utf-8")
@@ -234,7 +229,7 @@ def consultar_por_filtro(clave_filtro, valor_buscado, tipo_busqueda, ruta_archiv
                     continue
                     
                 campo_valor = registro.get(clave_filtro, "")
-                campo_str = convertidor_texto(campo_valor)
+                campo_str =  str(campo_valor).strip().replace(" ", "").lower()
 
                 coincide = False
                 if tipo_busqueda == "igual":
@@ -244,9 +239,9 @@ def consultar_por_filtro(clave_filtro, valor_buscado, tipo_busqueda, ruta_archiv
 
                 if coincide:
                     if "prioridad" in registro:
-                        mostrar_grupo(registro)
+                        print(generar_muestra(registro, "grupo"))
                     else:
-                        mostrar_contacto(registro)
+                        print(generar_muestra(registro, "contacto"))
                     cantidad += 1
 
         if cantidad == 0:
@@ -390,7 +385,7 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
         return
 
     print("\nContacto seleccionado:")
-    mostrar_contacto(contacto_objetivo)
+    print(generar_muestra(contacto_objetivo, "contacto"))
 
     opciones_modificar = [
         "Nombre", "Teléfono", "Mail", "Grupo", 
@@ -460,7 +455,7 @@ def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_co
     a un grupo hacia uno nuevo.
     """
     ruta_temp = "temp_contactos_reasignar.txt"
-    v_limpio = convertidor_texto(nombre_grupo_viejo)
+    v_limpio =str(nombre_grupo_viejo).strip().replace(" ", "").lower()
 
     try:
         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -470,7 +465,7 @@ def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_co
             linea_limpia = linea.strip()
             if linea_limpia:
                 contacto = json.loads(linea_limpia)
-                if convertidor_texto(contacto.get("grupo", "")) == v_limpio:
+                if str(contacto.get("grupo", "")).strip().replace(" ", "").lower() == v_limpio:
                     contacto["grupo"] = nombre_grupo_nuevo
                 arch_temp.write(json.dumps(contacto, ensure_ascii=False) + "\n")
 
@@ -499,7 +494,7 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
         return
 
     print("\nGrupo seleccionado:")
-    mostrar_grupo(grupo_objetivo)
+    print(generar_muestra(grupo_objetivo, "grupo"))
 
     opciones_modificar_grupo = [
         "Nombre del grupo", "Descripción", "Prioridad", 
@@ -567,10 +562,10 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
     if renombrado:
         reasignar_contactos_de_grupo(nombre_anterior, grupo_objetivo["nombre"], ruta_contactos)
 
-def eliminar_contacto_archivo(ruta_contactos="contactos.txt", ruta_papelera="papelera_contactos.txt"):
+def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
     """
-    Elimina un contacto. Puede moverlo físicamente al archivo de la papelera
-    o eliminarlo definitivamente del archivo principal.
+    Elimina un contacto. Puede cambiar su estado a 'papelera' (borrado lógico)
+    o eliminarlo definitivamente del archivo principal (borrado físico).
     """
     print("\n=== ELIMINAR CONTACTO ===")
     id_buscado = pedir_entero("Dime el ID del contacto a eliminar: ")
@@ -581,7 +576,7 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt", ruta_papelera="pap
         return
 
     print(f"\nContacto seleccionado: {contacto_objetivo['nombre']} (ID: {contacto_objetivo['id']})")
-    print("  [1] Mover a la papelera (Recomendado)")
+    print("  [1] Mover a la papelera (Cambiar estado a 'papelera')")
     print("  [2] Eliminar permanentemente")
     print("  [3] Cancelar")
 
@@ -596,9 +591,6 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt", ruta_papelera="pap
         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
         arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-        if opcion == 1:
-            arch_papelera = open(ruta_papelera, "at", encoding="utf-8")
-
         for linea in arch_orig:
             linea_limpia = linea.strip()
             if linea_limpia:
@@ -606,7 +598,7 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt", ruta_papelera="pap
                 if c.get("id") == id_buscado:
                     if opcion == 1:
                         c["estado"] = "papelera"
-                        arch_papelera.write(json.dumps(c, ensure_ascii=False) + "\n")
+                        arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
                         print(f"[ÉXITO] '{c['nombre']}' fue movido a la papelera.")
                     else:
                         print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente.")
@@ -624,10 +616,6 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt", ruta_papelera="pap
             arch_temp.close()
         except NameError:
             pass
-        try:
-            arch_papelera.close()
-        except NameError:
-            pass
 
     sobrescribir_archivo(ruta_temp, ruta_contactos)
 
@@ -642,7 +630,7 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
         return
 
     nombre_grupo = grupo_objetivo["nombre"]
-    if convertidor_texto(nombre_grupo) == "varios":
+    if str(nombre_grupo).strip().replace(" ", "").lower() == "varios":
         print("[ERROR] No se puede eliminar el grupo por defecto 'Varios'.")
         return
 
@@ -681,8 +669,8 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
 # GESTIÓN DE LA PAPELERA DE RECICLAJE
 # ==========================================
 
-def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="papelera_contactos.txt"):
-    """Submenú interactivo para gestionar la papelera de reciclaje."""
+def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
+    """Submenú interactivo para gestionar la papelera de reciclaje dentro de contactos.txt."""
     ejecutando = True
     while ejecutando:
         print("\n=== PAPELERA DE RECICLAJE ===")
@@ -698,18 +686,19 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="pa
             case 1:
                 cant = 0
                 try:
-                    arch = open(ruta_papelera, "rt", encoding="utf-8")
+                    arch = open(ruta_contactos, "rt", encoding="utf-8")
                     print("\n--- CONTACTOS EN LA PAPELERA ---")
                     for linea in arch:
                         linea_limpia = linea.strip()
                         if linea_limpia:
                             contacto = json.loads(linea_limpia)
-                            mostrar_contacto(contacto)
-                            cant += 1
+                            if contacto.get("estado") == "papelera":
+                                print(generar_muestra(contacto, "contacto"))
+                                cant += 1
                     if cant == 0:
                         print("[INFO] La papelera está vacía.")
                 except FileNotFoundError:
-                    print("[INFO] La papelera está vacía (no existe archivo de papelera).")
+                    print("[INFO] No se encontró el archivo de contactos.")
                 except OSError as error:
                     print(f"[ERROR] Error al leer la papelera: {error}")
                 finally:
@@ -720,26 +709,25 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="pa
 
             case 2:
                 id_buscado = pedir_entero("Dime el ID del contacto a restaurar: ")
-                contacto_papelera = buscar_por_id_archivo(id_buscado, ruta_papelera)
+                contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
 
-                if not contacto_papelera:
+                if not contacto_objetivo or contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
                     continue
 
-                ruta_temp = "temp_papelera.txt"
+                ruta_temp = "temp_contactos.txt"
 
                 try:
-                    arch_pap = open(ruta_papelera, "rt", encoding="utf-8")
+                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
                     arch_temp = open(ruta_temp, "wt", encoding="utf-8")
-                    arch_cont = open(ruta_contactos, "at", encoding="utf-8")
 
-                    for linea in arch_pap:
+                    for linea in arch_orig:
                         linea_limpia = linea.strip()
                         if linea_limpia:
                             c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado:
+                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
                                 c["estado"] = "activo"
-                                arch_cont.write(json.dumps(c, ensure_ascii=False) + "\n")
+                                arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
                                 print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
                             else:
                                 arch_temp.write(linea)
@@ -748,51 +736,67 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="pa
                     print(f"[ERROR] Error durante la restauración: {error}")
                 finally:
                     try:
-                        arch_pap.close()
+                        arch_orig.close()
                     except NameError:
                         pass
                     try:
                         arch_temp.close()
                     except NameError:
                         pass
-                    try:
-                        arch_cont.close()
-                    except NameError:
-                        pass
 
-                sobrescribir_archivo(ruta_temp, ruta_papelera)
+                sobrescribir_archivo(ruta_temp, ruta_contactos)
 
             case 3:
                 confirmacion = input("¿Está seguro de vaciar la papelera? (S/N): ").strip().upper()
                 if confirmacion == "S":
+                    ruta_temp = "temp_contactos.txt"
                     try:
-                        arch = open(ruta_papelera, "wt", encoding="utf-8")
-                        arch.close()
+                        arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
+                        arch_temp = open(ruta_temp, "wt", encoding="utf-8")
+
+                        for linea in arch_orig:
+                            linea_limpia = linea.strip()
+                            if linea_limpia:
+                                c = json.loads(linea_limpia)
+                                if c.get("estado") != "papelera":
+                                    arch_temp.write(linea)
+
                         print("[ÉXITO] La papelera se ha vaciado por completo.")
                     except OSError as error:
                         print(f"[ERROR] No se pudo vaciar la papelera: {error}")
+                    finally:
+                        try:
+                            arch_orig.close()
+                        except NameError:
+                            pass
+                        try:
+                            arch_temp.close()
+                        except NameError:
+                            pass
+
+                    sobrescribir_archivo(ruta_temp, ruta_contactos)
                 else:
                     print("[INFO] Operación cancelada.")
 
             case 4:
                 id_buscado = pedir_entero("Dime el ID del contacto a borrar permanentemente: ")
-                contacto_papelera = buscar_por_id_archivo(id_buscado, ruta_papelera)
+                contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
 
-                if not contacto_papelera:
+                if not contacto_objetivo or contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
                     continue
 
-                ruta_temp = "temp_papelera.txt"
+                ruta_temp = "temp_contactos.txt"
 
                 try:
-                    arch_pap = open(ruta_papelera, "rt", encoding="utf-8")
+                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
                     arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-                    for linea in arch_pap:
+                    for linea in arch_orig:
                         linea_limpia = linea.strip()
                         if linea_limpia:
                             c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado:
+                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
                                 print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
                             else:
                                 arch_temp.write(linea)
@@ -801,7 +805,7 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="pa
                     print(f"[ERROR] Error al eliminar de la papelera: {error}")
                 finally:
                     try:
-                        arch_pap.close()
+                        arch_orig.close()
                     except NameError:
                         pass
                     try:
@@ -809,11 +813,10 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt", ruta_papelera="pa
                     except NameError:
                         pass
 
-                sobrescribir_archivo(ruta_temp, ruta_papelera)
+                sobrescribir_archivo(ruta_temp, ruta_contactos)
 
             case 5:
                 ejecutando = False
-
 
 # ==========================================
 # EXPORTAR Y LEER ARCHIVOS EXTERNOS
@@ -833,9 +836,16 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         return
 
     ruta_origen = ruta_contactos if eleccion_seccion == 1 else ruta_grupos
-    nombre_salida = "export_contactos.txt" if eleccion_seccion == 1 else "export_grupos.txt"
-
-    # 1. FILTRO DE REGISTROS (Por ID)
+    nombre_salida = input("Dime el nombre del archivo a exportar: ").strip()
+    while not nombre_salida:
+        print("[ERROR] El nombre del archivo no puede estar vacío.")
+        nombre_salida = input("Dime el nombre del archivo a exportar(NO PONER EL .TXT): ").strip()
+    nombre_salida += ".txt"
+    
+    if nombre_salida.lower() == ruta_origen.lower():
+        print("[ERROR] No se puede usar el mismo archivo de origen como destino de exportación.")
+        return
+    
     print("\n--- 1. INGRESAR IDs A EXPORTAR ---")
     ids_deseados = set()
     while True:
@@ -843,10 +853,6 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         if id_ingresado in ids_deseados:
             break
         ids_deseados.add(id_ingresado)
-        
-    if not ids_deseados:
-        print("[INFO] No se seleccionó ningún ID. Cancelando exportación.")
-        return
 
     # 2. FILTRO DE DATOS (Por campos)
     print("\n--- 2. SELECCIÓN DE CAMPOS A EXPORTAR ---")
@@ -969,8 +975,8 @@ def sub_modo_consulta_contactos():
                 nombre = input("Ingrese nombre o parte del nombre: ").strip()
                 consultar_por_filtro("nombre", nombre, tipo_busqueda="subcadena",ruta_archivo="contactos.txt")
             case 3:
-                tel = pedir_entero("Ingrese número de teléfono o parte de este: ")
-                consultar_por_filtro("telefono", tel, tipo_busqueda="subcadena",ruta_archivo="contactos.txt")
+                tel = input("Ingrese número de teléfono o parte de este: ").strip()
+                consultar_por_filtro("telefono", tel, tipo_busqueda="subcadena", ruta_archivo="contactos.txt")
             case 4:
                 mail = input("Ingrese mail o parte del mail: ").strip()
                 consultar_por_filtro("mail", mail, tipo_busqueda="subcadena",ruta_archivo="contactos.txt")
