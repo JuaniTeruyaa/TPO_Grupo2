@@ -885,7 +885,7 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         return
 
     ruta_origen = ruta_contactos if eleccion_seccion == 1 else ruta_grupos
-    nombre_salida = input("Dime el nombre del archivo a exportar: ").strip()
+    nombre_salida = input("Dime el nombre del archivo a exportar (NO PONER EL .TXT): ").strip()
     while not nombre_salida:
         print("[ERROR] El nombre del archivo no puede estar vacío.")
         nombre_salida = input("Dime el nombre del archivo a exportar(NO PONER EL .TXT): ").strip()
@@ -983,22 +983,30 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
             pass
 
 def leer_archivo_externo():
-    """Lee secuencialmente e imprime por pantalla el contenido de un archivo externo."""
+    """Lee secuencialmente un archivo externo y muestra su contenido en una lista estructurada y limpia."""
     nombre = input("Ingrese el nombre del archivo externo (sin extensión .txt): ").strip()
     nombre_completo = nombre + ".txt"
 
     cant = 0
     try:
         arch = open(nombre_completo, "rt", encoding="utf-8")
-        print(f"\n=== CONTENIDO DEL ARCHIVO: {nombre_completo} ===")
+        print(f"  LECTURA DE ARCHIVO: {nombre_completo}")
+
         for linea in arch:
             linea_limpia = linea.strip()
             if linea_limpia:
                 objeto = json.loads(linea_limpia)
-                print(objeto)
                 cant += 1
+                print(f"\nRegistro #{cant}")
+                for clave, valor in objeto.items():
+                    print(f"   • {clave.title()}: {valor}")
+                print("   " + "-" * 30)
+
         if cant == 0:
-            print("[INFO] El archivo está vacío.")
+            print("\n[INFO] El archivo está vacío.")
+        else:
+            print(f"\n[ÉXITO] Total de registros leídos: {cant}\n")
+
     except FileNotFoundError:
         print(f"[ERROR] No se encontró el archivo '{nombre_completo}'.")
     except json.JSONDecodeError:
@@ -1010,7 +1018,6 @@ def leer_archivo_externo():
             arch.close()
         except NameError:
             pass
-
 
 # ==========================================
 # SUBMENÚS DE NAVEGACIÓN
