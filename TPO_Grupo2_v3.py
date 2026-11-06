@@ -100,10 +100,9 @@ def generar_muestra(datos, tipo_registro):
             campos_extras[clave] = valor
 
     if len(campos_extras) > 0:
-        detalles = [f"{clave}: {valor}" for clave, valor in campos_extras.items()]
-        texto_extra = ", ".join(detalles)
-        return f"{linea_base} | {texto_extra}"
-
+        detalles = [f"{clave.title()}: {valor}" for clave, valor in campos_extras.items()]
+        texto_extra = " | ".join(detalles)
+        return f"{linea_base}|\n --Campos Extras--\n{texto_extra}"
     return linea_base
 
 
@@ -120,8 +119,8 @@ def sobrescribir_archivo(ruta_temp, ruta_destino):
         # os.replace mueve/renombra el archivo temporal a la ruta destino.
         # Si el archivo destino ya existe, lo borra y lo pisa automáticamente.
         os.replace(ruta_temp, ruta_destino)
-    except OSError as e:
-        print(f"[ERROR] Ocurrió un error al reemplazar el archivo: {e}")
+    except OSError:
+        print(f"[ERROR] Ocurrió un error al reemplazar el archivo")
 
 def generar_id_unico_archivo(ruta_archivo):
     """
@@ -138,6 +137,8 @@ def generar_id_unico_archivo(ruta_archivo):
                     max_id = objeto["id"]
     except FileNotFoundError:
         pass
+    except json.JSONDecodeError:
+        print(f"[ERROR] El archivo '{ruta_archivo}' contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al determinar el ID único: {error}")
     finally:
@@ -162,6 +163,8 @@ def obtener_grupos_lista(ruta_archivo="grupos.txt"):
                 grupos_nombres.append(g["nombre"])
     except FileNotFoundError:
         print("[AVISO] El archivo de grupos no existe aún.")
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo de grupos contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] No se pudieron leer los grupos: {error}")
     finally:
@@ -184,9 +187,9 @@ def seleccionar_grupo_desde_archivo(ruta_archivo="grupos.txt"):
 def buscar_por_id_archivo(id_buscado, ruta_archivo):
     """
     Busca un objeto por su ID recorriendo el archivo línea por línea.
-    No carga todos los datos, se detiene al encontrarlo.
+    Devuelve el diccionario del objeto si lo encuentra, o un diccionario vacío {} si no.
     """
-    encontrado = None
+    encontrado = {}
     try:
         arch = open(ruta_archivo, "rt", encoding="utf-8")
         for linea in arch:
@@ -198,6 +201,8 @@ def buscar_por_id_archivo(id_buscado, ruta_archivo):
                     break
     except FileNotFoundError:
         print(f"[ERROR] El archivo '{ruta_archivo}' no existe.")
+    except json.JSONDecodeError:
+        print(f"[ERROR] El archivo '{ruta_archivo}' contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al leer el archivo: {error}")
     finally:
@@ -206,7 +211,6 @@ def buscar_por_id_archivo(id_buscado, ruta_archivo):
         except NameError:
             pass
     return encontrado
-
 
 # ==========================================
 # CONSULTAS Y BÚSQUEDAS (MODO CONSULTA)
@@ -225,24 +229,22 @@ def consultar_por_filtro(clave_filtro, valor_buscado, tipo_busqueda, ruta_archiv
             if linea_limpia:
                 registro = json.loads(linea_limpia)
                 
-                if registro.get("estado") == "papelera":
-                    continue
-                    
-                campo_valor = registro.get(clave_filtro, "")
-                campo_str =  str(campo_valor).strip().replace(" ", "").lower()
+                if registro.get("estado") != "papelera":
+                    campo_valor = registro.get(clave_filtro, "")
+                    campo_str =  str(campo_valor).strip().replace(" ", "").lower()
 
-                coincide = False
-                if tipo_busqueda == "igual":
-                    coincide = (campo_str == valor_limpio)
-                elif tipo_busqueda == "subcadena":
-                    coincide = (valor_limpio in campo_str)
+                    coincide = False
+                    if tipo_busqueda == "igual":
+                        coincide = (campo_str == valor_limpio)
+                    elif tipo_busqueda == "subcadena":
+                        coincide = (valor_limpio in campo_str)
 
-                if coincide:
-                    if "prioridad" in registro:
-                        print(generar_muestra(registro, "grupo"))
-                    else:
-                        print(generar_muestra(registro, "contacto"))
-                    cantidad += 1
+                    if coincide:
+                        if "prioridad" in registro:
+                            print(generar_muestra(registro, "grupo"))
+                        else:
+                            print(generar_muestra(registro, "contacto"))
+                        cantidad += 1
 
         if cantidad == 0:
             print("[RESULTADO] No se encontraron resultados con ese criterio.")
@@ -251,6 +253,8 @@ def consultar_por_filtro(clave_filtro, valor_buscado, tipo_busqueda, ruta_archiv
 
     except FileNotFoundError:
         print(f"[ERROR] No se encontró el archivo '{ruta_archivo}'.")
+    except json.JSONDecodeError:
+        print(f"[ERROR] El archivo '{ruta_archivo}' contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al leer el archivo: {error}")
     finally:
@@ -380,7 +384,7 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
     id_buscado = pedir_entero("Dime el ID del contacto a modificar: ")
     
     contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
-    if not contacto_objetivo or contacto_objetivo.get("estado") == "papelera":
+    if contacto_objetivo.get("estado") != "activo":
         print("[RESULTADO] Contacto activo no encontrado.")
         return
 
@@ -419,6 +423,7 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
         return
 
     ruta_temp = "temp_contactos.txt"
+    exito = False
 
     try:
         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -431,10 +436,11 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
                 if c.get("id") == id_buscado:
                     arch_temp.write(json.dumps(contacto_objetivo, ensure_ascii=False) + "\n")
                 else:
-                    arch_temp.write(linea)
+                    arch_temp.write(linea + "\n")
+        exito = True
 
-        print("[ÉXITO] Contacto modificado correctamente.")
-
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Ocurrió un error al actualizar el archivo: {error}")
     finally:
@@ -447,7 +453,10 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
         except NameError:
             pass
 
-    sobrescribir_archivo(ruta_temp, ruta_contactos)
+    if exito:
+        sobrescribir_archivo(ruta_temp, ruta_contactos)
+        print("[ÉXITO] Contacto modificado correctamente.")
+
 
 def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_contactos="contactos.txt"):
     """
@@ -455,7 +464,8 @@ def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_co
     a un grupo hacia uno nuevo.
     """
     ruta_temp = "temp_contactos_reasignar.txt"
-    v_limpio =str(nombre_grupo_viejo).strip().replace(" ", "").lower()
+    v_limpio = str(nombre_grupo_viejo).strip().replace(" ", "").lower()
+    exito = False
 
     try:
         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -468,7 +478,9 @@ def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_co
                 if str(contacto.get("grupo", "")).strip().replace(" ", "").lower() == v_limpio:
                     contacto["grupo"] = nombre_grupo_nuevo
                 arch_temp.write(json.dumps(contacto, ensure_ascii=False) + "\n")
-
+        exito = True
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo de contactos contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al reasignar contactos de grupo: {error}")
     finally:
@@ -481,7 +493,9 @@ def reasignar_contactos_de_grupo(nombre_grupo_viejo, nombre_grupo_nuevo, ruta_co
         except NameError:
             pass
 
-    sobrescribir_archivo(ruta_temp, ruta_contactos)
+    if exito:
+        sobrescribir_archivo(ruta_temp, ruta_contactos)
+
 
 def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.txt"):
     """Modifica los atributos de un grupo y sobrescribe el archivo."""
@@ -489,7 +503,7 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
     id_buscado = pedir_entero("Dime el ID del grupo a modificar: ")
 
     grupo_objetivo = buscar_por_id_archivo(id_buscado, ruta_grupos)
-    if not grupo_objetivo:
+    if grupo_objetivo.get("id") != id_buscado:
         print("[RESULTADO] Grupo no encontrado.")
         return
 
@@ -529,6 +543,7 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
         return
 
     ruta_temp = "temp_grupos.txt"
+    exito = False
 
     try:
         arch_orig = open(ruta_grupos, "rt", encoding="utf-8")
@@ -541,10 +556,11 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
                 if g.get("id") == id_buscado:
                     arch_temp.write(json.dumps(grupo_objetivo, ensure_ascii=False) + "\n")
                 else:
-                    arch_temp.write(linea)
+                    arch_temp.write(linea + "\n")
+        exito = True
 
-        print("[ÉXITO] Grupo modificado correctamente.")
-
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al modificar grupo: {error}")
     finally:
@@ -557,10 +573,11 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
         except NameError:
             pass
 
-    sobrescribir_archivo(ruta_temp, ruta_grupos)
-
-    if renombrado:
-        reasignar_contactos_de_grupo(nombre_anterior, grupo_objetivo["nombre"], ruta_contactos)
+    if exito:
+        sobrescribir_archivo(ruta_temp, ruta_grupos)
+        print("[ÉXITO] Grupo modificado correctamente.")
+        if renombrado:
+            reasignar_contactos_de_grupo(nombre_anterior, grupo_objetivo["nombre"], ruta_contactos)
 
 def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
     """
@@ -571,7 +588,7 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
     id_buscado = pedir_entero("Dime el ID del contacto a eliminar: ")
 
     contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
-    if not contacto_objetivo or contacto_objetivo.get("estado") == "papelera":
+    if contacto_objetivo.get("estado") != "activo":
         print("[RESULTADO] Contacto activo no encontrado.")
         return
 
@@ -586,6 +603,7 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
         return
 
     ruta_temp = "temp_contactos.txt"
+    exito = False
 
     try:
         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -603,8 +621,11 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
                     else:
                         print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente.")
                 else:
-                    arch_temp.write(linea)
+                    arch_temp.write(linea + "\n")
+        exito = True
 
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error durante la eliminación: {error}")
     finally:
@@ -617,7 +638,10 @@ def eliminar_contacto_archivo(ruta_contactos="contactos.txt"):
         except NameError:
             pass
 
-    sobrescribir_archivo(ruta_temp, ruta_contactos)
+    if exito:
+        sobrescribir_archivo(ruta_temp, ruta_contactos)
+
+    
 
 def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.txt"):
     """Elimina un grupo reasignando sus contactos en el archivo de contactos hacia 'Varios'."""
@@ -625,7 +649,7 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
     id_buscado = pedir_entero("Dime el ID del grupo a eliminar: ")
 
     grupo_objetivo = buscar_por_id_archivo(id_buscado, ruta_grupos)
-    if not grupo_objetivo:
+    if grupo_objetivo.get("id") != id_buscado:
         print("[RESULTADO] Grupo no encontrado.")
         return
 
@@ -635,6 +659,7 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
         return
 
     ruta_temp = "temp_grupos.txt"
+    exito = False
 
     try:
         arch_orig = open(ruta_grupos, "rt", encoding="utf-8")
@@ -647,8 +672,11 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
                 if g.get("id") == id_buscado:
                     print(f"[ÉXITO] Grupo '{nombre_grupo}' eliminado.")
                 else:
-                    arch_temp.write(linea)
+                    arch_temp.write(linea + "\n")
+        exito = True
 
+    except json.JSONDecodeError:
+        print("[ERROR] El archivo contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error al eliminar el grupo: {error}")
     finally:
@@ -661,8 +689,9 @@ def eliminar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.t
         except NameError:
             pass
 
-    sobrescribir_archivo(ruta_temp, ruta_grupos)
-    reasignar_contactos_de_grupo(nombre_grupo, "Varios", ruta_contactos)
+    if exito:
+        sobrescribir_archivo(ruta_temp, ruta_grupos)
+        reasignar_contactos_de_grupo(nombre_grupo, "Varios", ruta_contactos)
 
 
 # ==========================================
@@ -699,6 +728,8 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                         print("[INFO] La papelera está vacía.")
                 except FileNotFoundError:
                     print("[INFO] No se encontró el archivo de contactos.")
+                except json.JSONDecodeError:
+                    print("[ERROR] El archivo contiene un formato JSON inválido.")
                 except OSError as error:
                     print(f"[ERROR] Error al leer la papelera: {error}")
                 finally:
@@ -711,11 +742,12 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                 id_buscado = pedir_entero("Dime el ID del contacto a restaurar: ")
                 contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
 
-                if not contacto_objetivo or contacto_objetivo.get("estado") != "papelera":
+                if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
                     continue
 
                 ruta_temp = "temp_contactos.txt"
+                exito = False
 
                 try:
                     arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -730,8 +762,11 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                                 arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
                                 print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
                             else:
-                                arch_temp.write(linea)
+                                arch_temp.write(linea + "\n")
+                    exito = True
 
+                except json.JSONDecodeError:
+                    print("[ERROR] El archivo contiene un formato JSON inválido.")
                 except OSError as error:
                     print(f"[ERROR] Error durante la restauración: {error}")
                 finally:
@@ -744,12 +779,15 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                     except NameError:
                         pass
 
-                sobrescribir_archivo(ruta_temp, ruta_contactos)
+                if exito:
+                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+
 
             case 3:
                 confirmacion = input("¿Está seguro de vaciar la papelera? (S/N): ").strip().upper()
                 if confirmacion == "S":
                     ruta_temp = "temp_contactos.txt"
+                    exito = False
                     try:
                         arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
                         arch_temp = open(ruta_temp, "wt", encoding="utf-8")
@@ -759,9 +797,11 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                             if linea_limpia:
                                 c = json.loads(linea_limpia)
                                 if c.get("estado") != "papelera":
-                                    arch_temp.write(linea)
+                                    arch_temp.write(linea + "\n")
+                        exito = True
 
-                        print("[ÉXITO] La papelera se ha vaciado por completo.")
+                    except json.JSONDecodeError:
+                        print("[ERROR] El archivo contiene un formato JSON inválido.")
                     except OSError as error:
                         print(f"[ERROR] No se pudo vaciar la papelera: {error}")
                     finally:
@@ -774,7 +814,10 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                         except NameError:
                             pass
 
-                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+                    if exito:
+                        sobrescribir_archivo(ruta_temp, ruta_contactos)
+                        print("[ÉXITO] La papelera se ha vaciado por completo.")
+
                 else:
                     print("[INFO] Operación cancelada.")
 
@@ -782,11 +825,12 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                 id_buscado = pedir_entero("Dime el ID del contacto a borrar permanentemente: ")
                 contacto_objetivo = buscar_por_id_archivo(id_buscado, ruta_contactos)
 
-                if not contacto_objetivo or contacto_objetivo.get("estado") != "papelera":
+                if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
                     continue
 
                 ruta_temp = "temp_contactos.txt"
+                exito = False
 
                 try:
                     arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
@@ -799,8 +843,11 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                             if c.get("id") == id_buscado and c.get("estado") == "papelera":
                                 print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
                             else:
-                                arch_temp.write(linea)
+                                arch_temp.write(linea + "\n")
+                    exito = True
 
+                except json.JSONDecodeError:
+                    print("[ERROR] El archivo contiene un formato JSON inválido.")
                 except OSError as error:
                     print(f"[ERROR] Error al eliminar de la papelera: {error}")
                 finally:
@@ -813,7 +860,9 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
                     except NameError:
                         pass
 
-                sobrescribir_archivo(ruta_temp, ruta_contactos)
+                if exito:
+                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+
 
             case 5:
                 ejecutando = False
@@ -867,18 +916,23 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         ["id", "nombre", "telefono", "mail", "grupo", "estado"] 
         if eleccion_seccion == 1 else ["id", "nombre", "descripcion", "prioridad"]
     )
+    incluir_extras = False
 
     if eleccion_campos == 2:
-        opciones_menu = campos_disponibles + ["Finalizar selección"]
+        opciones_menu = campos_disponibles + ["Campos extras", "Finalizar selección"]
         while True:
             sel = menu_opciones("Campos Disponibles", opciones_menu)
             if sel == len(opciones_menu):
                 break
             campo = opciones_menu[sel - 1]
-            campos_elegidos.add(campo)
-            print(f"[INFO] Campos seleccionados actual: {list(campos_elegidos)}")
+            if campo == "Campos extras":
+                incluir_extras = True
+                print("[INFO] Opción 'Campos extras' activada.")
+            else:
+                campos_elegidos.add(campo)
+                print(f"[INFO] Campos seleccionados actual: {list(campos_elegidos)}")
 
-        if not campos_elegidos:
+        if not campos_elegidos and not incluir_extras:
             print("[INFO] No se seleccionó ningún campo. Cancelando exportación.")
             return
 
@@ -899,7 +953,13 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
                     if eleccion_campos == 1:
                         arch_dest.write(json.dumps(objeto, ensure_ascii=False) + "\n")
                     else:
-                        nuevo_dict = {k: objeto[k] for k in campos_elegidos if k in objeto}
+                        campos_a_extraer = set(campos_elegidos)
+                        if incluir_extras:
+                            campos_extras = [k for k in objeto.keys() if k not in campos_disponibles]
+                            for campo in campos_extras:
+                                campos_a_extraer.add(campo)
+
+                        nuevo_dict = {k: objeto[k] for k in campos_a_extraer if k in objeto}
                         arch_dest.write(json.dumps(nuevo_dict, ensure_ascii=False) + "\n")
                     
                     cant += 1
@@ -908,6 +968,8 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
 
     except FileNotFoundError:
         print(f"[ERROR] El archivo de origen '{ruta_origen}' no existe.")
+    except json.JSONDecodeError:
+        print(f"[ERROR] El archivo de origen contiene un formato JSON inválido.")
     except OSError as error:
         print(f"[ERROR] Error durante la exportación: {error}")
     finally:
