@@ -148,41 +148,48 @@ def generar_id_unico_archivo(ruta_archivo):
             pass
     return max_id + 1
 
-def obtener_grupos_lista(ruta_archivo="grupos.txt"):
+def seleccionar_grupo_desde_archivo(ruta_archivo="grupos.txt"):
     """
-    Lee secuencialmente los grupos para devolver únicamente una lista con los nombres.
-    (Sólo retiene los nombres como string para poder renderizar las opciones del menú)
+    Valida secuencialmente por teclado si el grupo existe en el archivo
+    sin cargar datos en listas ni llenar la memoria RAM.
     """
-    grupos_nombres = []
+    nombre_ingresado = input("Ingrese el nombre del grupo a asignar: ").strip()
+    
+    if not nombre_ingresado:
+        print("[ERROR] El nombre del grupo no puede estar vacío.")
+        return seleccionar_grupo_desde_archivo(ruta_archivo)
+
+    grupo_encontrado = False
     try:
         arch = open(ruta_archivo, "rt", encoding="utf-8")
         for linea in arch:
             linea_limpia = linea.strip()
             if linea_limpia:
                 g = json.loads(linea_limpia)
-                grupos_nombres.append(g["nombre"])
+                if g.get("nombre", "").lower() == nombre_ingresado.lower():
+                    grupo_encontrado = g["nombre"]
+                    break
     except FileNotFoundError:
-        print("[AVISO] El archivo de grupos no existe aún.")
-    except json.JSONDecodeError:
-        print("[ERROR] El archivo de grupos contiene un formato JSON inválido.")
-    except OSError as error:
-        print(f"[ERROR] No se pudieron leer los grupos: {error}")
+        print("[AVISO] El archivo de grupos no existe aún. Se asignará el grupo 'Varios'.")
+        return "Varios"
+    except (json.JSONDecodeError, OSError) as error:
+        print(f"[ERROR] Error al validar el grupo: {error}")
+        return "Varios"
     finally:
         try:
             arch.close()
         except NameError:
             pass
-    return grupos_nombres
 
-def seleccionar_grupo_desde_archivo(ruta_archivo="grupos.txt"):
-    """Permite al usuario seleccionar un grupo leyendo las opciones desde el archivo."""
-    grupos = obtener_grupos_lista(ruta_archivo)
-    if not grupos:
-        print("[AVISO] No hay grupos registrados. Se asignará el grupo 'Varios'.")
-        return "Varios"
+    if grupo_encontrado:
+        return grupo_encontrado
+
+    print(f"[ERROR] El grupo '{nombre_ingresado}' no existe en el registro.")
+    opcion = input("¿Desea reintentar (R) o asignar el grupo 'Varios' por defecto (V)?: ").strip().upper()
+    if opcion == "R":
+        return seleccionar_grupo_desde_archivo(ruta_archivo)
     
-    eleccion = menu_opciones("Seleccionar Grupo", grupos)
-    return grupos[eleccion - 1]
+    return "Varios"
 
 def buscar_por_id_archivo(id_buscado, ruta_archivo):
     """
