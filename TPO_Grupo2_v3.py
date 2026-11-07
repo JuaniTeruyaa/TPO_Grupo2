@@ -148,41 +148,48 @@ def generar_id_unico_archivo(ruta_archivo):
             pass
     return max_id + 1
 
-def obtener_grupos_lista(ruta_archivo="grupos.txt"):
+def seleccionar_grupo_desde_archivo(ruta_archivo="grupos.txt"):
     """
-    Lee secuencialmente los grupos para devolver únicamente una lista con los nombres.
-    (Sólo retiene los nombres como string para poder renderizar las opciones del menú)
+    Valida secuencialmente por teclado si el grupo existe en el archivo
+    sin cargar datos en listas ni llenar la memoria RAM.
     """
-    grupos_nombres = []
+    nombre_ingresado = input("Ingrese el nombre del grupo a asignar: ").strip()
+    
+    if not nombre_ingresado:
+        print("[ERROR] El nombre del grupo no puede estar vacío.")
+        return seleccionar_grupo_desde_archivo(ruta_archivo)
+
+    grupo_encontrado = False
     try:
         arch = open(ruta_archivo, "rt", encoding="utf-8")
         for linea in arch:
             linea_limpia = linea.strip()
             if linea_limpia:
                 g = json.loads(linea_limpia)
-                grupos_nombres.append(g["nombre"])
+                if g.get("nombre", "").lower() == nombre_ingresado.lower():
+                    grupo_encontrado = g["nombre"]
+                    break
     except FileNotFoundError:
-        print("[AVISO] El archivo de grupos no existe aún.")
-    except json.JSONDecodeError:
-        print("[ERROR] El archivo de grupos contiene un formato JSON inválido.")
-    except OSError as error:
-        print(f"[ERROR] No se pudieron leer los grupos: {error}")
+        print("[AVISO] El archivo de grupos no existe aún. Se asignará el grupo 'Varios'.")
+        return "Varios"
+    except (json.JSONDecodeError, OSError) as error:
+        print(f"[ERROR] Error al validar el grupo: {error}")
+        return "Varios"
     finally:
         try:
             arch.close()
         except NameError:
             pass
-    return grupos_nombres
 
-def seleccionar_grupo_desde_archivo(ruta_archivo="grupos.txt"):
-    """Permite al usuario seleccionar un grupo leyendo las opciones desde el archivo."""
-    grupos = obtener_grupos_lista(ruta_archivo)
-    if not grupos:
-        print("[AVISO] No hay grupos registrados. Se asignará el grupo 'Varios'.")
-        return "Varios"
+    if grupo_encontrado:
+        return grupo_encontrado
+
+    print(f"[ERROR] El grupo '{nombre_ingresado}' no existe en el registro.")
+    opcion = input("¿Desea reintentar (R) o asignar el grupo 'Varios' por defecto (V)?: ").strip().upper()
+    if opcion == "R":
+        return seleccionar_grupo_desde_archivo(ruta_archivo)
     
-    eleccion = menu_opciones("Seleccionar Grupo", grupos)
-    return grupos[eleccion - 1]
+    return "Varios"
 
 def buscar_por_id_archivo(id_buscado, ruta_archivo):
     """
@@ -522,9 +529,13 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
 
     match eleccion:
         case 1:
-            nuevo_nombre = validar_solo_letras("Dime el nuevo nombre: ")
-            grupo_objetivo["nombre"] = nuevo_nombre
-            renombrado = True
+            # Validar si se está intentando renombrar el grupo por defecto
+            if str(nombre_anterior).strip().replace(" ", "").lower() == "varios":
+                print("[ERROR] No se puede cambiar el nombre del grupo por defecto 'Varios'.")
+            else:
+                nuevo_nombre = validar_solo_letras("Dime el nuevo nombre: ")
+                grupo_objetivo["nombre"] = nuevo_nombre
+                renombrado = True
         case 2:
             grupo_objetivo["descripcion"] = input("Dime la nueva descripción del grupo: ").strip()
         case 3:
@@ -744,43 +755,42 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
 
                 if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
-                    continue
+                else:   
+                    ruta_temp = "temp_contactos.txt"
+                    exito = False
 
-                ruta_temp = "temp_contactos.txt"
-                exito = False
-
-                try:
-                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
-                    arch_temp = open(ruta_temp, "wt", encoding="utf-8")
-
-                    for linea in arch_orig:
-                        linea_limpia = linea.strip()
-                        if linea_limpia:
-                            c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
-                                c["estado"] = "activo"
-                                arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
-                                print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
-                            else:
-                                arch_temp.write(linea + "\n")
-                    exito = True
-
-                except json.JSONDecodeError:
-                    print("[ERROR] El archivo contiene un formato JSON inválido.")
-                except OSError as error:
-                    print(f"[ERROR] Error durante la restauración: {error}")
-                finally:
                     try:
-                        arch_orig.close()
-                    except NameError:
-                        pass
-                    try:
-                        arch_temp.close()
-                    except NameError:
-                        pass
+                        arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
+                        arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-                if exito:
-                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+                        for linea in arch_orig:
+                            linea_limpia = linea.strip()
+                            if linea_limpia:
+                                c = json.loads(linea_limpia)
+                                if c.get("id") == id_buscado and c.get("estado") == "papelera":
+                                    c["estado"] = "activo"
+                                    arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
+                                    print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
+                                else:
+                                    arch_temp.write(linea + "\n")
+                        exito = True
+
+                    except json.JSONDecodeError:
+                        print("[ERROR] El archivo contiene un formato JSON inválido.")
+                    except OSError as error:
+                        print(f"[ERROR] Error durante la restauración: {error}")
+                    finally:
+                        try:
+                            arch_orig.close()
+                        except NameError:
+                            pass
+                        try:
+                            arch_temp.close()
+                        except NameError:
+                            pass
+
+                    if exito:
+                        sobrescribir_archivo(ruta_temp, ruta_contactos)
 
 
             case 3:
@@ -827,41 +837,40 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
 
                 if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
-                    continue
+                else:    
+                    ruta_temp = "temp_contactos.txt"
+                    exito = False
 
-                ruta_temp = "temp_contactos.txt"
-                exito = False
-
-                try:
-                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
-                    arch_temp = open(ruta_temp, "wt", encoding="utf-8")
-
-                    for linea in arch_orig:
-                        linea_limpia = linea.strip()
-                        if linea_limpia:
-                            c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
-                                print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
-                            else:
-                                arch_temp.write(linea + "\n")
-                    exito = True
-
-                except json.JSONDecodeError:
-                    print("[ERROR] El archivo contiene un formato JSON inválido.")
-                except OSError as error:
-                    print(f"[ERROR] Error al eliminar de la papelera: {error}")
-                finally:
                     try:
-                        arch_orig.close()
-                    except NameError:
-                        pass
-                    try:
-                        arch_temp.close()
-                    except NameError:
-                        pass
+                        arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
+                        arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-                if exito:
-                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+                        for linea in arch_orig:
+                            linea_limpia = linea.strip()
+                            if linea_limpia:
+                                c = json.loads(linea_limpia)
+                                if c.get("id") == id_buscado and c.get("estado") == "papelera":
+                                    print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
+                                else:
+                                    arch_temp.write(linea + "\n")
+                        exito = True
+
+                    except json.JSONDecodeError:
+                        print("[ERROR] El archivo contiene un formato JSON inválido.")
+                    except OSError as error:
+                        print(f"[ERROR] Error al eliminar de la papelera: {error}")
+                    finally:
+                        try:
+                            arch_orig.close()
+                        except NameError:
+                            pass
+                        try:
+                            arch_temp.close()
+                        except NameError:
+                            pass
+
+                    if exito:
+                        sobrescribir_archivo(ruta_temp, ruta_contactos)
 
 
             case 5:
@@ -885,14 +894,14 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         return
 
     ruta_origen = ruta_contactos if eleccion_seccion == 1 else ruta_grupos
-    nombre_salida = input("Dime el nombre del archivo a exportar: ").strip()
+    nombre_salida = input("Dime el nombre del archivo a exportar (NO PONER EL .TXT): ").strip()
     while not nombre_salida:
         print("[ERROR] El nombre del archivo no puede estar vacío.")
         nombre_salida = input("Dime el nombre del archivo a exportar(NO PONER EL .TXT): ").strip()
     nombre_salida += ".txt"
     
-    if nombre_salida.lower() == ruta_origen.lower():
-        print("[ERROR] No se puede usar el mismo archivo de origen como destino de exportación.")
+    if nombre_salida.lower() == ruta_contactos.lower() or nombre_salida.lower() == ruta_grupos.lower():
+        print("[ERROR] No se puede usar el mismo nombre que los archivos originales.")
         return
     
     print("\n--- 1. INGRESAR IDs A EXPORTAR ---")
@@ -983,22 +992,30 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
             pass
 
 def leer_archivo_externo():
-    """Lee secuencialmente e imprime por pantalla el contenido de un archivo externo."""
+    """Lee secuencialmente un archivo externo y muestra su contenido en una lista estructurada y limpia."""
     nombre = input("Ingrese el nombre del archivo externo (sin extensión .txt): ").strip()
     nombre_completo = nombre + ".txt"
 
     cant = 0
     try:
         arch = open(nombre_completo, "rt", encoding="utf-8")
-        print(f"\n=== CONTENIDO DEL ARCHIVO: {nombre_completo} ===")
+        print(f"  LECTURA DE ARCHIVO: {nombre_completo}")
+
         for linea in arch:
             linea_limpia = linea.strip()
             if linea_limpia:
                 objeto = json.loads(linea_limpia)
-                print(objeto)
                 cant += 1
+                print(f"\nRegistro #{cant}")
+                for clave, valor in objeto.items():
+                    print(f"   • {clave.title()}: {valor}")
+                print("   " + "-" * 30)
+
         if cant == 0:
-            print("[INFO] El archivo está vacío.")
+            print("\n[INFO] El archivo está vacío.")
+        else:
+            print(f"\n[ÉXITO] Total de registros leídos: {cant}\n")
+
     except FileNotFoundError:
         print(f"[ERROR] No se encontró el archivo '{nombre_completo}'.")
     except json.JSONDecodeError:
@@ -1010,7 +1027,6 @@ def leer_archivo_externo():
             arch.close()
         except NameError:
             pass
-
 
 # ==========================================
 # SUBMENÚS DE NAVEGACIÓN
