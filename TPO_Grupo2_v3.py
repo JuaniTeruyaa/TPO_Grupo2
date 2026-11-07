@@ -522,9 +522,13 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
 
     match eleccion:
         case 1:
-            nuevo_nombre = validar_solo_letras("Dime el nuevo nombre: ")
-            grupo_objetivo["nombre"] = nuevo_nombre
-            renombrado = True
+            # Validar si se está intentando renombrar el grupo por defecto
+            if str(nombre_anterior).strip().replace(" ", "").lower() == "varios":
+                print("[ERROR] No se puede cambiar el nombre del grupo por defecto 'Varios'.")
+            else:
+                nuevo_nombre = validar_solo_letras("Dime el nuevo nombre: ")
+                grupo_objetivo["nombre"] = nuevo_nombre
+                renombrado = True
         case 2:
             grupo_objetivo["descripcion"] = input("Dime la nueva descripción del grupo: ").strip()
         case 3:
@@ -744,43 +748,42 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
 
                 if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
-                    continue
+                else:   
+                    ruta_temp = "temp_contactos.txt"
+                    exito = False
 
-                ruta_temp = "temp_contactos.txt"
-                exito = False
-
-                try:
-                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
-                    arch_temp = open(ruta_temp, "wt", encoding="utf-8")
-
-                    for linea in arch_orig:
-                        linea_limpia = linea.strip()
-                        if linea_limpia:
-                            c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
-                                c["estado"] = "activo"
-                                arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
-                                print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
-                            else:
-                                arch_temp.write(linea + "\n")
-                    exito = True
-
-                except json.JSONDecodeError:
-                    print("[ERROR] El archivo contiene un formato JSON inválido.")
-                except OSError as error:
-                    print(f"[ERROR] Error durante la restauración: {error}")
-                finally:
                     try:
-                        arch_orig.close()
-                    except NameError:
-                        pass
-                    try:
-                        arch_temp.close()
-                    except NameError:
-                        pass
+                        arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
+                        arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-                if exito:
-                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+                        for linea in arch_orig:
+                            linea_limpia = linea.strip()
+                            if linea_limpia:
+                                c = json.loads(linea_limpia)
+                                if c.get("id") == id_buscado and c.get("estado") == "papelera":
+                                    c["estado"] = "activo"
+                                    arch_temp.write(json.dumps(c, ensure_ascii=False) + "\n")
+                                    print(f"[ÉXITO] Contacto '{c['nombre']}' restaurado a la agenda activa.")
+                                else:
+                                    arch_temp.write(linea + "\n")
+                        exito = True
+
+                    except json.JSONDecodeError:
+                        print("[ERROR] El archivo contiene un formato JSON inválido.")
+                    except OSError as error:
+                        print(f"[ERROR] Error durante la restauración: {error}")
+                    finally:
+                        try:
+                            arch_orig.close()
+                        except NameError:
+                            pass
+                        try:
+                            arch_temp.close()
+                        except NameError:
+                            pass
+
+                    if exito:
+                        sobrescribir_archivo(ruta_temp, ruta_contactos)
 
 
             case 3:
@@ -827,41 +830,40 @@ def gestionar_papelera_archivo(ruta_contactos="contactos.txt"):
 
                 if contacto_objetivo.get("estado") != "papelera":
                     print("[ERROR] El ID ingresado no corresponde a un contacto en la papelera.")
-                    continue
+                else:    
+                    ruta_temp = "temp_contactos.txt"
+                    exito = False
 
-                ruta_temp = "temp_contactos.txt"
-                exito = False
-
-                try:
-                    arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
-                    arch_temp = open(ruta_temp, "wt", encoding="utf-8")
-
-                    for linea in arch_orig:
-                        linea_limpia = linea.strip()
-                        if linea_limpia:
-                            c = json.loads(linea_limpia)
-                            if c.get("id") == id_buscado and c.get("estado") == "papelera":
-                                print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
-                            else:
-                                arch_temp.write(linea + "\n")
-                    exito = True
-
-                except json.JSONDecodeError:
-                    print("[ERROR] El archivo contiene un formato JSON inválido.")
-                except OSError as error:
-                    print(f"[ERROR] Error al eliminar de la papelera: {error}")
-                finally:
                     try:
-                        arch_orig.close()
-                    except NameError:
-                        pass
-                    try:
-                        arch_temp.close()
-                    except NameError:
-                        pass
+                        arch_orig = open(ruta_contactos, "rt", encoding="utf-8")
+                        arch_temp = open(ruta_temp, "wt", encoding="utf-8")
 
-                if exito:
-                    sobrescribir_archivo(ruta_temp, ruta_contactos)
+                        for linea in arch_orig:
+                            linea_limpia = linea.strip()
+                            if linea_limpia:
+                                c = json.loads(linea_limpia)
+                                if c.get("id") == id_buscado and c.get("estado") == "papelera":
+                                    print(f"[ÉXITO] '{c['nombre']}' fue eliminado permanentemente de la papelera.")
+                                else:
+                                    arch_temp.write(linea + "\n")
+                        exito = True
+
+                    except json.JSONDecodeError:
+                        print("[ERROR] El archivo contiene un formato JSON inválido.")
+                    except OSError as error:
+                        print(f"[ERROR] Error al eliminar de la papelera: {error}")
+                    finally:
+                        try:
+                            arch_orig.close()
+                        except NameError:
+                            pass
+                        try:
+                            arch_temp.close()
+                        except NameError:
+                            pass
+
+                    if exito:
+                        sobrescribir_archivo(ruta_temp, ruta_contactos)
 
 
             case 5:
@@ -891,8 +893,8 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
         nombre_salida = input("Dime el nombre del archivo a exportar(NO PONER EL .TXT): ").strip()
     nombre_salida += ".txt"
     
-    if nombre_salida.lower() == ruta_origen.lower():
-        print("[ERROR] No se puede usar el mismo archivo de origen como destino de exportación.")
+    if nombre_salida.lower() == ruta_contactos.lower() or nombre_salida.lower() == ruta_grupos.lower():
+        print("[ERROR] No se puede usar el mismo nombre que los archivos originales.")
         return
     
     print("\n--- 1. INGRESAR IDs A EXPORTAR ---")
