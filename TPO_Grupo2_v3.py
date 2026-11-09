@@ -968,7 +968,7 @@ def exportar_archivo_secuencial(ruta_contactos="contactos.txt", ruta_grupos="gru
                             for campo in campos_extras:
                                 campos_a_extraer.add(campo)
 
-                        nuevo_dict = {k: objeto[k] for k in campos_a_extraer if k in objeto}
+                        nuevo_dict = {k: objeto[k] for k in objeto if k in campos_a_extraer}
                         arch_dest.write(json.dumps(nuevo_dict, ensure_ascii=False) + "\n")
                     
                     cant += 1
