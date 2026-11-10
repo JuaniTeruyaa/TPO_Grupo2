@@ -58,6 +58,34 @@ def validar_formato_mail(mail):
 
     return es_valido
 
+def existe_nombre_grupo(nombre, ruta_grupos="grupos.txt", id_excluir=0):
+    """
+    Recorre el archivo de grupos y devuelve True si ya existe un grupo con ese nombre.
+    Ignora el grupo con id 'id_excluir' (sirve al modificar, para no compararse consigo mismo).
+    """
+    existe = False
+    nombre_limpio = str(nombre).strip().replace(" ", "").lower()
+    try:
+        arch = open(ruta_grupos, "rt", encoding="utf-8")
+        for linea in arch:
+            linea_limpia = linea.strip()
+            if linea_limpia:
+                g = json.loads(linea_limpia)
+                nombre_g = str(g.get("nombre", "")).strip().replace(" ", "").lower()
+                if g.get("id") != id_excluir and nombre_g == nombre_limpio:
+                    existe = True
+                    break
+    except FileNotFoundError:
+        pass
+    except (json.JSONDecodeError, OSError) as error:
+        print(f"[ERROR] Error al verificar el nombre del grupo: {error}")
+    finally:
+        try:
+            arch.close()
+        except NameError:
+            pass
+    return existe
+
 def tipar_valor(entrada):
     """Tipa automáticamente una entrada a int, float o str usando excepciones."""
     texto = entrada.strip()
@@ -313,6 +341,10 @@ def agregar_grupo_archivo(ruta_grupos="grupos.txt"):
     print("\n=== AGREGAR NUEVO GRUPO ===")
     nuevo_id = generar_id_unico_archivo(ruta_grupos)
     nombre = validar_solo_letras("Ingrese el nombre del grupo: ")
+    while existe_nombre_grupo(nombre, ruta_grupos):
+        print(f"[ERROR] Ya existe un grupo llamado '{nombre}'.")
+        nombre = validar_solo_letras("Ingrese otro nombre para el grupo: ")
+
     descripcion = input("Ingrese la descripción del grupo: ").strip()
     opciones_prioridades = ("Alta", "Media", "Baja")
     eleccion_prio = menu_opciones("Prioridad", opciones_prioridades)
@@ -340,13 +372,16 @@ def agregar_grupo_archivo(ruta_grupos="grupos.txt"):
 def agregar_campo_personalizado(registro, tipo_seccion):
     """Agrega una clave-valor extra al diccionario de un contacto o grupo."""
     print(f"\n--- AGREGAR CAMPO EXTRA EN {tipo_seccion.upper()}: {registro['nombre']} ---")
+    campos_reservados = ("id", "nombre", "telefono", "mail", "grupo", "estado", "descripcion", "prioridad")
     clave = input("Ingrese el nombre del nuevo campo (ej: nota, edad, saldo): ").strip().lower()
 
-    while clave in registro or clave == "":
-        if clave in registro:
-            print(f"[ERROR] El campo '{clave}' ya existe.")
-        else:
+    while clave in registro or clave in campos_reservados or clave == "":
+        if clave == "":
             print("[ERROR] El nombre del campo no puede estar vacío.")
+        elif clave in campos_reservados:
+            print(f"[ERROR] '{clave}' es un nombre reservado del sistema, elija otro.")
+        else:
+            print(f"[ERROR] El campo '{clave}' ya existe.")
         clave = input("Ingrese el nombre del nuevo campo: ").strip().lower()
 
     valor = input(f"Ingrese el valor del campo '{clave}': ").strip()
@@ -358,6 +393,54 @@ def agregar_campo_personalizado(registro, tipo_seccion):
     registro[clave] = valor_final
     print(f"[ÉXITO] Campo '{clave}' agregado con valor '{valor_final}' (Tipo: {tipo_dato}).")
 
+def modificar_campo_personalizado(registro, tipo_seccion):
+    """
+    Permite modificar el valor de un campo extra existente.
+    Si el nuevo valor se deja vacío, pregunta si se desea eliminar el campo.
+    Devuelve True si se modificó o eliminó el campo, False si no hubo cambios.
+    """
+    if tipo_seccion == "contacto":
+        campos_fijos = ("id", "nombre", "telefono", "mail", "grupo", "estado")
+    else:
+        campos_fijos = ("id", "nombre", "descripcion", "prioridad")
+
+    claves_extras = [clave for clave in registro.keys() if clave not in campos_fijos]
+    modificado = False
+
+    if not claves_extras:
+        print(f"\n[INFO] Este registro de {tipo_seccion} no tiene campos extras para modificar.")
+    else:
+        opciones = [f"Modificar '{clave}' (Valor actual: {registro[clave]})" for clave in claves_extras]
+        opciones.append("Cancelar")
+
+        eleccion = menu_opciones(f"Modificar Campo Extra de {registro['nombre']}", opciones)
+
+        if eleccion <= len(claves_extras):
+            clave = claves_extras[eleccion - 1]
+            valor = input(f"Ingrese el nuevo valor de '{clave}' (vacío para eliminar el campo): ").strip()
+
+            if valor == "":
+                respuesta = input(f"¿Desea eliminar el campo '{clave}'? (S/N): ").strip().upper()
+                while respuesta != "S" and respuesta != "N":
+                    print("[ERROR] Responda S o N.")
+                    respuesta = input(f"¿Desea eliminar el campo '{clave}'? (S/N): ").strip().upper()
+
+                if respuesta == "S":
+                    registro.pop(clave)
+                    print(f"[ÉXITO] El campo '{clave}' fue eliminado correctamente.")
+                    modificado = True
+                else:
+                    print(f"[INFO] Se mantiene el valor actual de '{clave}'.")
+            else:
+                valor_final, tipo_dato = tipar_valor(valor)
+                registro[clave] = valor_final
+                print(f"[ÉXITO] Campo '{clave}' actualizado a '{valor_final}' (Tipo: {tipo_dato}).")
+                modificado = True
+        else:
+            print("[INFO] Operación cancelada.")
+
+    return modificado
+
 def eliminar_campo_personalizado(registro, tipo_seccion):
     """Permite seleccionar y eliminar un campo personalizado extra existente."""
     if tipo_seccion == "contacto":
@@ -366,22 +449,25 @@ def eliminar_campo_personalizado(registro, tipo_seccion):
         campos_fijos = ("id", "nombre", "descripcion", "prioridad")
 
     claves_extras = [clave for clave in registro.keys() if clave not in campos_fijos]
+    eliminado = False
 
     if not claves_extras:
         print(f"\n[INFO] Este registro de {tipo_seccion} no tiene campos extras para eliminar.")
-        return
-
-    opciones = [f"Eliminar '{clave}' (Valor actual: {registro[clave]})" for clave in claves_extras]
-    opciones.append("Cancelar")
-
-    eleccion = menu_opciones(f"Eliminar Campo Extra de {registro['nombre']}", opciones)
-
-    if eleccion <= len(claves_extras):
-        clave_a_borrar = claves_extras[eleccion - 1]
-        registro.pop(clave_a_borrar)
-        print(f"[ÉXITO] El campo '{clave_a_borrar}' fue eliminado correctamente.")
     else:
-        print("[INFO] Operación cancelada.")
+        opciones = [f"Eliminar '{clave}' (Valor actual: {registro[clave]})" for clave in claves_extras]
+        opciones.append("Cancelar")
+
+        eleccion = menu_opciones(f"Eliminar Campo Extra de {registro['nombre']}", opciones)
+
+        if eleccion <= len(claves_extras):
+            clave_a_borrar = claves_extras[eleccion - 1]
+            registro.pop(clave_a_borrar)
+            print(f"[ÉXITO] El campo '{clave_a_borrar}' fue eliminado correctamente.")
+            eliminado = True
+        else:
+            print("[INFO] Operación cancelada.")
+
+    return eliminado
 
 def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grupos.txt"):
     """
@@ -400,7 +486,7 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
 
     opciones_modificar = [
         "Nombre", "Teléfono", "Mail", "Grupo", 
-        "Agregar Campo Extra", "Eliminar Campo Extra", "Cancelar"
+        "Agregar Campo Extra", "Modificar Campo Extra", "Eliminar Campo Extra", "Cancelar"
     ]
     eleccion = menu_opciones("Menú de Modificación", opciones_modificar)
 
@@ -421,8 +507,10 @@ def modificar_contacto_archivo(ruta_contactos="contactos.txt", ruta_grupos="grup
         case 5:
             agregar_campo_personalizado(contacto_objetivo, "contacto")
         case 6:
-            eliminar_campo_personalizado(contacto_objetivo, "contacto")
+            modificado = modificar_campo_personalizado(contacto_objetivo, "contacto")
         case 7:
+            modificado = eliminar_campo_personalizado(contacto_objetivo, "contacto")
+        case 8:
             print("[INFO] Operación cancelada.")
             modificado = False
 
@@ -519,7 +607,7 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
 
     opciones_modificar_grupo = [
         "Nombre del grupo", "Descripción", "Prioridad", 
-        "Agregar campo extra", "Eliminar campo extra", "Cancelar"
+        "Agregar campo extra", "Modificar campo extra", "Eliminar campo extra", "Cancelar"
     ]
     eleccion = menu_opciones("Menú de Modificación de Grupo", opciones_modificar_grupo)
 
@@ -532,8 +620,12 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
             # Validar si se está intentando renombrar el grupo por defecto
             if str(nombre_anterior).strip().replace(" ", "").lower() == "varios":
                 print("[ERROR] No se puede cambiar el nombre del grupo por defecto 'Varios'.")
+                modificado = False
             else:
                 nuevo_nombre = validar_solo_letras("Dime el nuevo nombre: ")
+                while existe_nombre_grupo(nuevo_nombre, ruta_grupos, id_buscado):
+                    print(f"[ERROR] Ya existe otro grupo llamado '{nuevo_nombre}'.")
+                    nuevo_nombre = validar_solo_letras("Dime otro nombre: ")
                 grupo_objetivo["nombre"] = nuevo_nombre
                 renombrado = True
         case 2:
@@ -545,8 +637,10 @@ def modificar_grupo_archivo(ruta_grupos="grupos.txt", ruta_contactos="contactos.
         case 4:
             agregar_campo_personalizado(grupo_objetivo, "grupo")
         case 5:
-            eliminar_campo_personalizado(grupo_objetivo, "grupo")
+            modificado = modificar_campo_personalizado(grupo_objetivo, "grupo")
         case 6:
+            modificado = eliminar_campo_personalizado(grupo_objetivo, "grupo")
+        case 7:
             print("[INFO] Operación cancelada.")
             modificado = False
 
